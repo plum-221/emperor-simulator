@@ -160,11 +160,11 @@ const api = {
       s.emperor.health-=1; s.emperor.exp+=1;
       return `勤勉理政，国库 +${dt}，招贤点 +1。`;}},
     read:{name:"读书",icon:ICONS.read,hint:"研读经史，增长智略（晨）",phases:["morn"],run(s){
-      const b=s.emperor.int; s.emperor.int=grow(b,9); if(R.chance(40))s.emperor.politics=grow(s.emperor.politics,5);
+      const b=s.emperor.int; s.emperor.int=grow(b,Game.hasTalent("t_scholar")?15:9); if(R.chance(40))s.emperor.politics=grow(s.emperor.politics,5);
       s.emperor.health-=1;
       return `潜心向学，智力 +${s.emperor.int-b}。`;}},
     train:{name:"习武",icon:ICONS.train,hint:"演练武艺，强身健体（晨/午）",phases:["morn","noon"],run(s){
-      const b=s.emperor.martial; s.emperor.martial=grow(b,9); if(R.chance(30))s.emperor.health+=1;
+      const b=s.emperor.martial; s.emperor.martial=grow(b,Game.hasTalent("t_valor")?15:9); if(R.chance(30))s.emperor.health+=1;
       return `勤练弓马，武力 +${s.emperor.martial-b}。`;}},
     audience:{name:"召见群臣",icon:ICONS.audience,hint:"召见大臣，笼络忠心（午）",phases:["noon"],select:"court"},
     cultivate:{name:"养性",icon:ICONS.cultivate,hint:"陶冶情操，增益魅力（夜）",phases:["eve"],run(s){
@@ -172,7 +172,7 @@ const api = {
       return `怡情养性，魅力 +${s.emperor.charm-b}。`;}},
     visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶（仅夜）",phases:["eve"],select:"harem"},
     rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康（夜）",phases:["eve"],run(s){
-      s.emperor.health+=R.i(3,5);
+      s.emperor.health+= Game.hasTalent("t_longevity")?R.i(5,8):R.i(3,5);
       return "静心休养，龙体渐安。";}},
     inspect:{name:"微服私访",icon:ICONS.visit,hint:"微服出宫，奇遇连连（午/夜）",phases:["noon","eve"],run(s){
       Game.startInspection(); return "";}}
@@ -195,7 +195,7 @@ const api = {
     c.favor=R.clamp(c.favor+R.i(6,12)); c.bond=R.clamp(c.bond+R.i(3,7));
     s.actedThisTurn=true; this.tally("visit");
     // 受孕：与健康、宠爱相关
-    if(c.pregnant==null && R.chance(28+s.emperor.health/8)){ c.pregnant=0; this.toast(`临幸 ${c.name}，${c.name}承欢…（似有喜兆）`);}
+    if(c.pregnant==null && R.chance(28+s.emperor.health/8+(this.hasTalent("t_fertility")?18:0))){ c.pregnant=0; this.toast(`临幸 ${c.name}，${c.name}承欢…（似有喜兆）`);}
     else this.toast(`临幸 ${c.name}，情分渐深。`);
     SFX.good(); UI.closePanel(); this.renderTurn();
   },
@@ -560,7 +560,7 @@ const api = {
     const ePow=R.i(40,75)+n.year+ (type==="invade"?8:0);
     const marshal=s.ministers.find(m=>m.post==="marshal");
     let our=n.military*0.5;
-    if(type==="emperor") our+=s.emperor.martial+8;
+    if(type==="emperor") our+=s.emperor.martial+8+(this.hasTalent("t_valor")?6:0);   // 天赋·神武盖世：亲征更勇
     else our+=(marshal?marshal.mil:25);
     if(this.hasTalent("t_strategy")) our+=8;   // 天赋·运筹帷幄
     // 可操作战斗界面（多回合·战术博弈）：交由 BattleSys 接管，结束回调 resolveWar
@@ -579,9 +579,10 @@ const api = {
     const s=this.s, n=s.nation; const win=!!res.win; const decisive=(res.ourHP||0)>=60;
     let title,text,role="general";
     if(win){
-      const land=R.i(3,8)+(decisive?R.i(1,4):0), spoil=R.i(6,16)+Math.round((res.ourHP||40)/12), loss=R.i(5,12);
+      const conq=this.hasTalent("t_conquest");   // 天赋·开疆拓土
+      const land=R.i(3,8)+(decisive?R.i(1,4):0)+(conq?3:0), spoil=R.i(6,16)+Math.round((res.ourHP||40)/12), loss=R.i(5,12);
       n.land=R.clamp(n.land+land); n.treasury=R.clamp(n.treasury+spoil);
-      n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)); n.military=R.clamp(n.military-loss);
+      n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)+(conq?4:0)); n.military=R.clamp(n.military-loss);
       n.people=R.clamp(n.people+4);
       s.flags.warWon=true;   // 战功——解锁巾帼·燕霜攻略
       this.tally("battlewin");
@@ -678,8 +679,11 @@ const api = {
     n.food   += n.land/24 - n.people/24;        // 地养粮、民耗粮（人多则粮紧）
     n.military-= n.military/28 * (this.hasTalent("t_drill")?0.5:1);   // 天赋·治军严明：损耗减半
     n.people  -= n.people/120 * (this.hasTalent("t_benevol")?0.5:1);  // 天赋·仁泽万民：回落减半
+    if(this.hasTalent("t_taxation"))  gain("people",0.6);     // 天赋·轻徭薄赋：民心月回升
+    if(this.hasTalent("t_logistics")) gain("military",0.8);   // 天赋·兵精粮足：兵力月回升
+    if(this.hasTalent("t_virtue"))    n.prestige=R.clamp(n.prestige+1);  // 天赋·德被苍生：威望月增
     // 月度治理产出招贤点：民心越盛、贤才越愿来投（御史在职额外揽才）
-    s.recruitPoints=(s.recruitPoints||0)+ 1 + (n.people>=60?1:0) + (s.ministers.some(m=>m.post==="censor")?1:0);
+    s.recruitPoints=(s.recruitPoints||0)+ 1 + (n.people>=60?1:0) + (s.ministers.some(m=>m.post==="censor")?1:0) + (this.hasTalent("t_meritocracy")?1:0);
     // 拮据反噬
     if(n.treasury<15){ n.people-=4; this.shiftAllLoyalty(-3); }
     if(n.food<12){ n.people-=5; }
@@ -712,7 +716,8 @@ const api = {
     s.children.forEach(c=>{ c.age++; this.growChild(c); });
     s.ministers.forEach(m=>{ m.age++; if(m.age>72 && R.chance(20)){ this.retire(m); } });
     if(s.flags.pills>=5 && R.chance(s.flags.pills*4)){ this.emperorDies("poison"); return; }
-    if(e.age>=50 && R.chance((e.age-48)*4)){ this.emperorDies("age"); return; }
+    const longev=this.hasTalent("t_longevity")?0.55:1;   // 天赋·颐养天和：天年风险大减
+    if(e.age>=50 && R.chance((e.age-48)*4*longev)){ this.emperorDies("age"); return; }
   },
 
   /* 孩子成长：随年龄推进成长阶段（婴/幼/少/青），属性随之增益 */

@@ -228,14 +228,26 @@ function buildGenerals(list, n, tier){
   }));
 }
 
-/* ---------- 帝王天赋树（P10 批3·养成）---------- */
+/* ---------- 帝王天赋树（P10 批3·养成）·三系各五·effect 接入既有公式 ---------- */
 const TALENTS = [
- {id:"t_diligence",branch:"文治",name:"宵衣旰食",desc:"勤政所得国库 +50%。",cost:1,req:null},
- {id:"t_finance",  branch:"文治",name:"理财有道",desc:"每月税入额外 +2。",cost:1,req:"t_diligence"},
- {id:"t_drill",    branch:"武功",name:"治军严明",desc:"兵员月损耗减半。",cost:1,req:null},
- {id:"t_strategy", branch:"武功",name:"运筹帷幄",desc:"战阵战力 +8。",cost:1,req:"t_drill"},
- {id:"t_benevol",  branch:"仁德",name:"仁泽万民",desc:"民心自然回落减半。",cost:1,req:null},
- {id:"t_charm",    branch:"仁德",name:"风流天子",desc:"攻略心动收益 +40%。",cost:1,req:"t_benevol"}
+ // 文治
+ {id:"t_diligence", branch:"文治",name:"宵衣旰食",desc:"勤政所得国库 +50%。",cost:1,req:null},
+ {id:"t_finance",   branch:"文治",name:"理财有道",desc:"每月税入额外 +2。",cost:1,req:"t_diligence"},
+ {id:"t_taxation",  branch:"文治",name:"轻徭薄赋",desc:"与民休息，民心每月回升。",cost:1,req:"t_diligence"},
+ {id:"t_scholar",   branch:"文治",name:"文教兴邦",desc:"读书所增智力大涨（9→15）。",cost:1,req:null},
+ {id:"t_meritocracy",branch:"文治",name:"唯才是举",desc:"每月招贤点额外 +1，求贤若渴。",cost:2,req:"t_scholar"},
+ // 武功
+ {id:"t_drill",     branch:"武功",name:"治军严明",desc:"兵员月损耗减半。",cost:1,req:null},
+ {id:"t_strategy",  branch:"武功",name:"运筹帷幄",desc:"战阵战力 +8。",cost:1,req:"t_drill"},
+ {id:"t_logistics", branch:"武功",name:"兵精粮足",desc:"治军有方，兵力每月回升。",cost:1,req:"t_drill"},
+ {id:"t_valor",     branch:"武功",name:"神武盖世",desc:"习武武力大涨（9→15）、御驾亲征更勇（战力 +6）。",cost:1,req:null},
+ {id:"t_conquest",  branch:"武功",name:"开疆拓土",desc:"胜战所得疆土 +3、威望 +4。",cost:2,req:"t_valor"},
+ // 仁德
+ {id:"t_benevol",   branch:"仁德",name:"仁泽万民",desc:"民心自然回落减半。",cost:1,req:null},
+ {id:"t_charm",     branch:"仁德",name:"风流天子",desc:"攻略心动收益 +40%。",cost:1,req:null},
+ {id:"t_virtue",    branch:"仁德",name:"德被苍生",desc:"圣德昭著，威望每月 +1。",cost:1,req:"t_benevol"},
+ {id:"t_longevity", branch:"仁德",name:"颐养天和",desc:"休养恢复更佳、圣寿绵长（天年风险大减）。",cost:1,req:"t_benevol"},
+ {id:"t_fertility", branch:"仁德",name:"螽斯衍庆",desc:"多子多福，临幸受孕几率大增。",cost:2,req:"t_charm"}
 ];
 const TALENT_BRANCHES=["文治","武功","仁德"];
 function talentById(id){ return TALENTS.find(t=>t.id===id); }
