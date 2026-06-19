@@ -126,24 +126,24 @@ const api = {
 
   /* ---------- 行动（每回合一次）---------- */
   ACTIONS:{
-    govern:{name:"勤政",icon:"📋",hint:"批阅奏章，理政安民",run(s){
+    govern:{name:"勤政",icon:ICONS.govern,hint:"批阅奏章，理政安民",run(s){
       const g=s.emperor.politics; s.nation.treasury+=Math.round(g/12)+R.i(0,3);
       s.nation.people+=Math.round(g/22)+1; s.emperor.health-=2; s.emperor.exp+=2;
       return `勤勉理政，国库 +${Math.round(g/12)+1}，民心略增。`;}},
-    read:{name:"读书",icon:"📖",hint:"研读经史，增长智略",run(s){
+    read:{name:"读书",icon:ICONS.read,hint:"研读经史，增长智略",run(s){
       s.emperor.int+=R.i(2,4); s.emperor.politics+=1; s.emperor.health-=1;
       return "潜心向学，智力、政治有所长进。";}},
-    train:{name:"习武",icon:"🏹",hint:"演练武艺，强身健体",run(s){
+    train:{name:"习武",icon:ICONS.train,hint:"演练武艺，强身健体",run(s){
       s.emperor.martial+=R.i(2,4); s.emperor.health+=1;
       return "勤练弓马，武力增长，龙体康健。";}},
-    cultivate:{name:"养性",icon:"🎴",hint:"陶冶情操，增益魅力",run(s){
+    cultivate:{name:"养性",icon:ICONS.cultivate,hint:"陶冶情操，增益魅力",run(s){
       s.emperor.charm+=R.i(2,4); s.emperor.health+=1;
       return "怡情养性，魅力提升。";}},
-    rest:{name:"休养",icon:"🛌",hint:"颐养龙体，恢复健康",run(s){
+    rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康",run(s){
       s.emperor.health+=R.i(5,8);
       return "静心休养，龙体大安。";}},
-    visit:{name:"临幸后宫",icon:"🏮",hint:"宠幸嫔妃，开枝散叶",select:"harem"},
-    audience:{name:"召见群臣",icon:"🤝",hint:"召见大臣，笼络忠心",select:"court"}
+    visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶",select:"harem"},
+    audience:{name:"召见群臣",icon:ICONS.audience,hint:"召见大臣，笼络忠心",select:"court"}
   },
 
   doAction(type){

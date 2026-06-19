@@ -26,6 +26,14 @@ body{font-family:var(--serif);color:var(--paper);background:#140805;overflow:hid
 img{display:block;}
 b{color:var(--gold-br);font-weight:600;}
 
+/* 鎏金线描图标统一尺寸 */
+.nstat i{display:inline-flex;align-items:center;}
+.nstat i svg{width:15px;height:15px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
+.act-btn i{display:inline-flex;}
+.act-btn i svg{width:23px;height:23px;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));}
+.tab .tico{display:inline-flex;align-items:center;justify-content:center;}
+.tab .tico svg{width:20px;height:20px;display:block;}
+
 /* 雕花框工具类（鎏金角 + 双线 + 浮雕） */
 .framed{position:relative;border:2px solid var(--gold);border-radius:10px;
   box-shadow:var(--shadow), inset 0 0 0 1px rgba(255,255,255,.08);}

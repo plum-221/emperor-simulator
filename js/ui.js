@@ -30,7 +30,7 @@ function renderHUD(){
   $("hud-nation").innerHTML=Object.keys(NATION_STATS).map(k=>{
     const m=NATION_STATS[k]; const v=Math.round(n[k]);
     const low=v<20?"low":"";
-    return `<span class="nstat ${low}" title="${m.name}"><i>${m.icon}</i><b>${v}</b></span>`;
+    return `<span class="nstat ${low}" title="${m.name}"><i>${ICONS[k]||m.icon}</i><b>${v}</b></span>`;
   }).join("");
 }
 
@@ -240,7 +240,11 @@ function boot(){
     $("btn-replay").onclick=()=>{ show("title"); showRecord(); };
     $("btn-next").onclick=()=>Game.nextTurn();
     $("btn-menu").onclick=()=>{ if(confirm("返回标题？（进度已自动保存，可“继续上局”）")){ show("title"); showRecord(); } };
-    [...document.querySelectorAll(".tab[data-panel]")].forEach(t=>t.onclick=()=>openPanel(t.dataset.panel));
+    [...document.querySelectorAll(".tab[data-panel]")].forEach(t=>{
+      t.onclick=()=>openPanel(t.dataset.panel);
+      const ic=t.querySelector(".tico"); if(ic) ic.innerHTML=ICONS[t.dataset.panel]||"";
+    });
+    var ni=document.querySelector("#btn-next .tico"); if(ni) ni.innerHTML=ICONS.next;
     $("panel-close").onclick=closePanel;
     $("panel-mask").onclick=e=>{ if(e.target===$("panel-mask")) closePanel(); };
     $("modal-close").onclick=closeModal;

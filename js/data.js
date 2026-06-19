@@ -23,6 +23,33 @@ const EMP_ATTRS = {
   politics:{name:"政治",color:"#5aa06a"}
 };
 
+/* 统一鎏金线描图标（替代 emoji，跟随 currentColor 上色） */
+const _i = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICONS = {
+  // 国家六维
+  treasury:_i('<path d="M3.5 15c3.5-4 13.5-4 17 0l-2 3.2c-4.5-1.8-8.5-1.8-13 0z"/><path d="M9.5 12c1-1.6 4-1.6 5 0"/>'),
+  military:_i('<path d="M12 3v11"/><path d="M9 14h6"/><path d="M12 14v5"/><path d="M10.5 19h3"/>'),
+  people:_i('<path d="M12 5.2a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6"/><path d="M5.5 19c0-3.7 2.9-6 6.5-6s6.5 2.3 6.5 6"/>'),
+  food:_i('<path d="M4 11h16a8 8 0 0 1-16 0z"/><path d="M9 7.5c0 1-1 1.3-1 2.3"/><path d="M13 6.5c0 1.2-1 1.6-1 2.8"/>'),
+  land:_i('<path d="M2 19l6-9 4 5 3-4 7 8"/>'),
+  prestige:_i('<path d="M6.5 3v18"/><path d="M6.5 4h11l-3 3.2 3 3.2h-11"/>'),
+  // 行动
+  govern:_i('<path d="M7 3h10v18H7z"/><path d="M10 8h4"/><path d="M10 12h4"/><path d="M10 16h3"/>'),
+  read:_i('<path d="M12 6c-2-1.4-5-1.4-7.5-1v12c2.5-.4 5.5-.4 7.5 1 2-1.4 5-1.4 7.5-1V5c-2.5-.4-5.5-.4-7.5 1z"/><path d="M12 6v13"/>'),
+  train:_i('<path d="M7.5 4a12 12 0 0 1 0 16"/><path d="M5 12h13"/><path d="M15 9l3 3-3 3"/>'),
+  cultivate:_i('<path d="M12 20L5.5 9.5a7.5 7.5 0 0 1 13 0z"/><path d="M12 20V11"/><path d="M9 11l1.3-3.2"/><path d="M15 11l-1.3-3.2"/>'),
+  rest:_i('<path d="M20 13.5A8 8 0 1 1 10.5 4 6.3 6.3 0 0 0 20 13.5z"/>'),
+  visit:_i('<path d="M12 20S4 14.5 4 9.2A3.7 3.7 0 0 1 12 6.4 3.7 3.7 0 0 1 20 9.2C20 14.5 12 20 12 20z"/>'),
+  audience:_i('<path d="M8 6.5a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8"/><path d="M16 6.5a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8"/><path d="M3.5 18c0-3 2-4.5 4.5-4.5s4.5 1.5 4.5 4.5"/><path d="M16 13.5c2.5 0 4.5 1.5 4.5 4.5"/>'),
+  // 页签
+  court:_i('<path d="M4 9l8-4.5 8 4.5"/><path d="M5.5 9v8.5"/><path d="M18.5 9v8.5"/><path d="M5 18h14"/><path d="M9.5 18v-4.5h5V18"/>'),
+  harem:_i('<path d="M12 3v2"/><path d="M12 5c-3 0-5 2.5-5 6.5S9 18 12 18s5-2.5 5-6.5S15 5 12 5z"/><path d="M7.5 9h9"/><path d="M7.5 14h9"/><path d="M12 18v2.5"/>'),
+  heir:_i('<path d="M12 5.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8"/><path d="M8.5 19v-4a3.5 3.5 0 0 1 7 0v4"/><path d="M9.5 19h5"/>'),
+  army:_i('<path d="M12 3l7 2.2v5.8c0 4.8-3.4 7.8-7 9.7-3.6-1.9-7-4.9-7-9.7V5.2z"/><path d="M12 8v6"/><path d="M9 11h6"/>'),
+  log:_i('<path d="M4 6h16"/><path d="M4 18h16"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M9.5 10h5"/><path d="M9.5 14h5"/>'),
+  next:_i('<path d="M6 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/>')
+};
+
 /* 官职：用哪种才（civ文/mil武）、主要增益维度 */
 const POSITIONS = [
   {id:"chancellor",name:"丞相",   use:"civ",desc:"总领百官，理政安民（增国库·民心）"},
