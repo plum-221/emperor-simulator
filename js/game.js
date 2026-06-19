@@ -40,8 +40,9 @@ const api = {
 
   newGame(dynasty,name,reign){
     const M=this.manifest;
-    const ministers = buildMinisters(M.ministers, 8);
-    const generals  = buildGenerals(M.generals.length?M.generals:M.ministers, 4);
+    // 开局收缩：仅 2 文官 + 3 武将，全 1★(low)，数值低且随机；强者靠招贤抽卡
+    const ministers = buildMinisters(M.ministers, 2, "low");
+    const generals  = buildGenerals(M.generals.length?M.generals:M.ministers, 3, "low");
     // 开局自动任命前几位
     const roster = ministers.concat(generals);
     this.s = {
@@ -52,7 +53,8 @@ const api = {
       nation:{year:1, month:1, day:1, phase:0,
         treasury:60, military:55, people:60, food:55, land:50, prestige:45},
       ministers:roster,
-      consorts:buildConsorts(M.consorts, 3),
+      consorts:[],            // 后宫从 0 开始，逐位解锁攻略入宫
+      romance:{},             // 攻略进度 {[tplId]:{aff,seen,done}}
       children:[],
       pool:{ // 剩余立绘，供招贤/选秀补充
         ministers:R.shuffle(M.ministers).slice(8,80),
@@ -213,20 +215,32 @@ const api = {
   },
   executeMinister(id){
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
-    const m=s.ministers[i]; m.post=null; s.ministers.splice(i,1);
+    const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     s.nation.people=R.clamp(s.nation.people-3); this.shiftAllLoyalty(-3);
+    this.checkRomanceBreak(post);
     SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); UI.renderPanel("court"); this.renderTurn();
   },
   // 罢免：非致命，逐出朝堂、永不录用（进黑名单），惩罚轻于处死
   dismissMinister(id){
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
-    const m=s.ministers[i]; m.post=null; s.ministers.splice(i,1);
+    const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     this.shiftAllLoyalty(-1);
+    this.checkRomanceBreak(post);
     SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`);
     this.logMsg(`罢免 ${m.name}，逐出朝堂。`);
     UI.renderPanel("court"); this.renderTurn();
+  },
+  /* 门第联动：失去某官位 → 依赖该官位的官家女攻略中断、心动清零 */
+  checkRomanceBreak(post){
+    if(!post) return; const s=this.s;
+    CONSORTS.forEach(t=>{
+      if(t.requirePost===post && !s.ministers.some(m=>m.post===post)){
+        const r=s.romance[t.id];
+        if(r && !r.done && r.aff>0){ r.aff=0; r.seen=[]; this.toast(`${t.name} 门第骤衰，芳心已冷……`); }
+      }
+    });
   },
   /* 招贤抽卡：消耗「招贤点」单池抽卡 + 高/中/低档 + 保底 + 重复转碎片。
      排除黑名单（罢免/处死者永不再现）；抽中已在朝者→化碎片（不出现两个同人）。*/
@@ -250,8 +264,7 @@ const api = {
       return {dupe:true,tierKey,shard:tier.shard};
     }
     const m=(pick.kind==="martial"?buildGenerals:buildMinisters)([pick.src],1,tierKey)[0];
-    if(m.kind==="martial"){ m.mil=R.clamp(m.mil+tier.statBonus); m.civ=R.clamp(m.civ+Math.round(tier.statBonus/2)); }
-    else { m.civ=R.clamp(m.civ+tier.statBonus); m.mil=R.clamp(m.mil+Math.round(tier.statBonus/2)); }
+    // 数值已由 tier 区间(TIER_STATS)决定，不再额外叠加 statBonus
     s.ministers.push(m); SFX.gong();
     this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.name}（文${m.civ}·武${m.mil}）。`);
     UI.showRecruit(m);
@@ -315,21 +328,77 @@ const api = {
     UI.renderPanel("heir");
   },
 
-  /* 选秀纳妃：抽卡式从民间良家女中选纳一位（池内唯一，天然去重）*/
-  selectConsort(){
-    const s=this.s, n=s.nation;
-    if(n.treasury < SELECT_COST){ this.toast("国库不足，无以采选"); UI.renderPanel("harem"); return null; }
-    const src=s.pool.consorts.shift();
-    if(!src){ this.toast("良家女已尽选入宫闱"); return null; }
-    n.treasury-=SELECT_COST;
-    const c=buildConsorts([src],1)[0];
-    s.consorts.push(c);
-    SFX.gong();
-    this.logMsg(`选秀纳新 ${c.name}（美貌${c.beauty}）入宫。`);
-    this.clampNation();
-    UI.showSelect(c);
+  /* ---------- 后宫攻略系统（P9·galgame）---------- */
+  /* 可攻略名单：前置已解锁、尚未入宫 */
+  wooableConsorts(){ const s=this.s; return CONSORTS.filter(t=>t.unlock.cond(s) && !s.consorts.some(c=>c.tplId===t.id)); },
+  lockedConsorts(){ const s=this.s; return CONSORTS.filter(t=>!t.unlock.cond(s) && !s.consorts.some(c=>c.tplId===t.id)); },
+  romanceOf(cid){ const s=this.s; return (s.romance[cid] = s.romance[cid] || {aff:0,seen:[],done:false}); },
+
+  /* 攻略行动（夜·消耗时段）：kind="meet" 相会 / "gift" 赠礼 */
+  wooConsort(cid,kind){
+    const s=this.s; const tpl=consortTpl(cid); if(!tpl) return;
+    if(s.actedThisTurn){ this.toast("此时段已行一事"); return; }
+    if(!tpl.unlock.cond(s)){ this.toast(`${tpl.name} 缘分未到`); return; }
+    if(s.consorts.some(c=>c.tplId===cid)){ this.toast("已纳入后宫"); return; }
+    if(tpl.requirePost && !s.ministers.some(m=>m.post===tpl.requirePost)){ this.toast(`${tpl.name} 门第失势，暂难亲近`); UI.renderPanel("harem"); return; }
+    const r=this.romanceOf(cid);
+    let gain;
+    if(kind==="gift"){
+      if(s.nation.treasury<6){ this.toast("国库不足，无以备礼"); UI.renderPanel("harem"); return; }
+      s.nation.treasury-=6; gain=R.i(11,17);
+    }else{
+      const base=s.emperor[tpl.woo]||40;                       // 吃她偏好的那一维
+      gain=Math.round((7 + base/9 + s.emperor.charm/16) * (100-r.aff)/100) + R.i(1,4);  // 边际递减
+    }
+    r.aff=R.clamp(r.aff+gain);
+    s.actedThisTurn=true; SFX.good();
+    this.toast(`与 ${tpl.name} ${kind==="gift"?"赠礼":"相会"}，心动 +${gain}（${r.aff}/100）`);
+    // 心动跨阈值 → 触发未演的剧情幕
+    const idx=tpl.scenes.findIndex((sc,i)=>!r.seen.includes(i) && r.aff>=sc.at);
+    if(idx>=0){ r.seen.push(idx); this.showSceneCard(tpl,tpl.scenes[idx]); UI.closePanel(); this.afterEvent(); return; }
     UI.renderPanel("harem"); this.renderTurn();
-    return c;
+  },
+
+  /* 把一幕剧情包装成事件卡（复用 showCard/resolveEvent；末幕选项触发入宫）*/
+  showSceneCard(tpl,scene){
+    const choices=scene.choices.map(ch=>{
+      const c={text:ch.text, effects:ch.eff||{}};
+      if(scene.join) c.do=(G)=>G.joinConsort(tpl.id);
+      return c;
+    });
+    this.showCard({title:scene.title, role:"consort", _face:tpl.portrait, big:false,
+      text:`【${ORIGINS[tpl.origin].name} · ${tpl.name}】　${scene.text}`, choices});
+  },
+
+  joinConsort(cid){
+    const s=this.s, tpl=consortTpl(cid); if(!tpl) return;
+    if(s.consorts.some(c=>c.tplId===cid)) return;
+    const c=makeConsort(tpl); s.consorts.push(c);
+    this.romanceOf(cid).done=true;
+    SFX.gong();
+    this.logMsg(`${tpl.name} 入宫，封为${RANKS[c.rank]}（特质·${c.traitName}）。`);
+    this.toast(`${tpl.name} 倾心相许，纳为${RANKS[c.rank]}！`);
+  },
+
+  /* 入宫妃子的被动特质，按月结算 */
+  applyConsortTraits(){
+    const s=this.s, n=s.nation, e=s.emperor;
+    s.consorts.forEach(c=>{
+      switch(c.traitKey){
+        case "huiyan":   s.recruitPoints=(s.recruitPoints||0)+1; break;
+        case "mulberry": n.people=R.clamp(n.people+1); break;
+        case "chenyu":   e.charm=grow(e.charm,3); break;
+        case "fengqiu":  n.treasury=R.clamp(n.treasury+1); break;
+        case "hongxian": s.ministers.forEach(m=>m.ambition=R.clamp(m.ambition-1)); break;
+        case "jieyu":    this.allConsortFavor(1); break;
+        case "wenji":    e.int=grow(e.int,3); n.treasury=R.clamp(n.treasury+1); break;
+        case "mulan":    n.military=R.clamp(n.military+1); break;
+        case "jianqi":   e.martial=grow(e.martial,3); break;
+        case "qingguo":  e.charm=grow(e.charm,4); c.favor=R.clamp(c.favor+R.i(-6,3)); break;
+        case "meihua":   n.prestige=R.clamp(n.prestige+1); e.charm=grow(e.charm,2); break;
+        case "xiao":     ["treasury","military","people","food","land","prestige"].forEach(k=>n[k]=R.clamp(n[k]+0.6)); break;
+      }
+    });
   },
 
   /* 教养皇嗣：消耗本时段行动，按边际递减提升孩子某一维 */
@@ -395,6 +464,7 @@ const api = {
       n.land=R.clamp(n.land+land); n.treasury=R.clamp(n.treasury+spoil);
       n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)); n.military=R.clamp(n.military-loss);
       n.people=R.clamp(n.people+4);
+      s.flags.warWon=true;   // 战功——解锁木兰攻略
       title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
       if(marshal)marshal.loyalty=R.clamp(marshal.loyalty+4);
       SFX.gong();
@@ -504,6 +574,7 @@ const api = {
       c.favor=R.clamp(c.favor-1);
       if(c.pregnant!=null){ c.pregnant++; if(c.pregnant>=10){ this.birth(c); c.pregnant=null; } }
     });
+    this.applyConsortTraits();   // 入宫妃子的被动特质
     // 帝王健康随龄消耗（按月）
     e.health-=R.i(0,1)+(e.age>=45?1:0)+(e.age>=60?1:0);
     this.clampNation();
@@ -559,9 +630,8 @@ const api = {
     s.gen++;
     s.emperor={name:heir.name, age:Math.max(15,heir.age), portrait:this.pickFace(this.manifest),
       health:70, int:heir.int, charm:heir.charm, martial:heir.martial, politics:heir.politics, exp:0};
-    // 新君登基：后宫一清，旧皇子退场，老臣部分留任
-    s.consorts=buildConsorts(s.pool.consorts.length?s.pool.consorts:this.manifest.consorts,3);
-    s.pool.consorts=s.pool.consorts.slice(3);
+    // 新君登基：后宫一清（新朝重新攻略），旧皇子退场，老臣部分留任
+    s.consorts=[]; s.romance={};
     s.children=[];
     this.logMsg(`${e.name}${causeTxt}，享年${e.age}。太子${heir.name}即位，是为第${s.gen}代。`);
     SFX.gong();
@@ -611,7 +681,7 @@ const api = {
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
-  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ this.s=d; MapSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
+  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; this.s=d; MapSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
   saveBest(){ const s=this.s; const best=JSON.parse(localStorage.getItem(LS_BEST)||"null");
     const cur={dynasty:s.dynasty,years:s.nation.year,gen:s.gen,score:this.score()};
     if(!best||cur.score>best.score) localStorage.setItem(LS_BEST, JSON.stringify(cur)); }

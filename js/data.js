@@ -155,12 +155,20 @@ const GIVEN_M = "承乾景琰昭珩瑞渊弘睿晟煜钰熙泽宸曜钧澈".spli
 const GIVEN_F = "玥婉宁妧琬瑶昭华婵柔嫣媛清菀绮".split("");
 
 /* ---------- 由 manifest 构建角色 ---------- */
+/* 星级分档数值区间：主属性(本行当)/副属性。星越高，roll 范围越高。
+   开局全 1★(low)→寒微随机；强者靠招贤抽卡(mid/high)获得。 */
+const TIER_STATS = {
+  low:  {main:[28,52], off:[8,30]},
+  mid:  {main:[52,72], off:[20,46]},
+  high: {main:[72,92], off:[38,62]}
+};
+const _statRange = t => TIER_STATS[t] || TIER_STATS.mid;
 function buildMinisters(list, n, tier){
-  const sel = R.shuffle(list).slice(0,n);
+  const sel = R.shuffle(list).slice(0,n); const rg=_statRange(tier||"mid");
   return sel.map((m,idx)=>({
     id:"min"+idx+"_"+Date.now()%9999+idx,
     name:m.name, portrait:m.file,
-    civ:R.i(45,95), mil:R.i(10,55),
+    civ:R.i(rg.main[0],rg.main[1]), mil:R.i(rg.off[0],rg.off[1]),
     loyalty:R.i(55,88), ambition:R.i(5,45),
     personality:R.pick(PERS_KEYS),
     post:null, age:R.i(28,60), reward:0,
@@ -168,11 +176,11 @@ function buildMinisters(list, n, tier){
   }));
 }
 function buildGenerals(list, n, tier){
-  const sel = R.shuffle(list).slice(0,n);
+  const sel = R.shuffle(list).slice(0,n); const rg=_statRange(tier||"mid");
   return sel.map((m,idx)=>({
     id:"gen"+idx+"_"+Date.now()%9999+idx,
     name:m.name, portrait:m.file,
-    civ:R.i(20,55), mil:R.i(55,96),
+    civ:R.i(rg.off[0],rg.off[1]), mil:R.i(rg.main[0],rg.main[1]),
     loyalty:R.i(55,90), ambition:R.i(10,55),
     personality:R.pick(PERS_KEYS),
     post:null, age:R.i(30,58), reward:0,
@@ -188,6 +196,168 @@ function buildConsorts(list, n){
     favor:R.i(0,15), bond:R.i(0,10),
     rank:0, pregnant:null, age:R.i(16,26)
   }));
+}
+
+/* ===================================================================
+   后宫攻略系统（P9·galgame）——开局 0 妃，逐位解锁攻略入宫
+   出身分五等；每位有前置解锁 + 偏好属性 woo + 三幕剧情(心动25/55/85) + 入宫特质。
+   =================================================================== */
+const ORIGINS = {
+  maid:   {name:"宫女",  color:"#8fae6a"},
+  common: {name:"良家",  color:"#6ca9e0"},
+  noble:  {name:"官家女",color:"#e0b24a"},
+  martial:{name:"将门",  color:"#c0563a"},
+  rare:   {name:"仙逸",  color:"#c08fe0"}
+};
+const WOO_NAME = {charm:"魅力", int:"才情", martial:"英气"};
+const _PC = "assets/portraits/consorts/";   // 立绘目录
+const CONSORTS = [
+ {id:"hongfu", name:"紅拂", portrait:_PC+"c_011.jpg", origin:"maid", woo:"charm", beauty:84, joinRank:0,
+  traitKey:"huiyan", trait:{name:"慧眼识珠",desc:"独具识人之明，每月为君添招贤点 +1。"},
+  unlock:{desc:"开局即可结识（杨府歌伎，拂尘而立）", cond:()=>true},
+  scenes:[
+   {at:25,title:"拂尘初见",text:"司空杨府夜宴，一执红拂的歌伎立于侧，明眸流转，似有不屑富贵之态——竟在偷偷打量你。",
+    choices:[{text:"以目示意，赞其风骨",eff:{charm:+1}},{text:"佯作不见，静观其行",eff:{}}]},
+   {at:55,title:"红拂夜奔",text:"夜深，红拂竟扮作行脚郎君，私入驿馆相投：「妾观天下英雄，唯君耳。」胆识惊人。",
+    choices:[{text:"纳其投奔，许以知遇",eff:{prestige:+2}},{text:"试其心志，问以天下",eff:{int:+1}}]},
+   {at:85,title:"红拂定情",text:"自此红拂随侍左右，识见不让须眉，每为你拾遗补阙。今夜她解下红拂，盈盈下拜……",join:true,
+    choices:[{text:"纳为答应，引为知己",eff:{}}]}]},
+
+ {id:"luofu", name:"羅敷", portrait:_PC+"c_018.jpg", origin:"common", woo:"int", beauty:82, joinRank:1,
+  traitKey:"mulberry", trait:{name:"陌上采桑",desc:"贤淑动乡里，在宫则民心月增 +1。"},
+  unlock:{desc:"国祚≥1年（微服于陌上桑间偶遇）", cond:s=>s.nation.year>=1},
+  scenes:[
+   {at:25,title:"陌上初遇",text:"微服出郊，见城南采桑女罗敷，头上倭堕髻、耳中明月珠，行者见之忘其犁锄——你也看痴了。",
+    choices:[{text:"下马问其姓字",eff:{}},{text:"远观而不渎",eff:{people:+2}}]},
+   {at:55,title:"使君一何愚",text:"你欲以华车相邀，罗敷正色辞之：「使君自有妇，罗敷自有夫。」不为权位所动，凛然有节。",
+    choices:[{text:"敬其贞烈，以礼相待",eff:{prestige:+3}},{text:"叹其难得，明媒求之",eff:{}}]},
+   {at:85,title:"明媒入室",text:"你撤去威逼、备六礼亲迎，罗敷感你以礼相待之诚，红妆出阁……",join:true,
+    choices:[{text:"以礼纳为常在",eff:{people:+2}}]}]},
+
+ {id:"xishi", name:"西施", portrait:_PC+"c_010.jpg", origin:"maid", woo:"charm", beauty:97, joinRank:1,
+  traitKey:"chenyu", trait:{name:"沉鱼之姿",desc:"绝世之容润泽圣心，帝王魅力缓涨。"},
+  unlock:{desc:"威望≥50（番邦慕威，进献越中浣纱美人）", cond:s=>s.nation.prestige>=50},
+  scenes:[
+   {at:25,title:"浣纱惊鸿",text:"邻邦进献越女西施。初见之日，她临溪浣纱，游鱼见其影竟沉入水底——左右皆失色。",
+    choices:[{text:"惊为天人，设响屣廊",eff:{charm:+1}},{text:"恐为红颜祸水，戒之",eff:{politics:+1}}]},
+   {at:55,title:"响屣廊上",text:"你筑廊以空瓮置其下，西施着木屐罗袜行其上，铮铮作响如环佩——一颦一笑皆牵动君心。",
+    choices:[{text:"日日相伴，乐而忘忧",eff:{health:+1}},{text:"宠之有度，不废朝政",eff:{politics:+1}}]},
+   {at:85,title:"沉鱼定情",text:"西施虽出身浣纱，心思却剔透，劝你「美色可悦目，社稷在用心」。今夜她为你抚琴一曲……",join:true,
+    choices:[{text:"纳为常在，相期相守",eff:{}}]}]},
+
+ {id:"wenjun", name:"卓文君", portrait:_PC+"c_012.jpg", origin:"common", woo:"int", beauty:85, joinRank:3,
+  traitKey:"fengqiu", trait:{name:"凤求凰",desc:"才女主中馈，理财有方，国库月入 +1。"},
+  unlock:{desc:"帝王智力≥55（能赏其才，方得才女青眼）", cond:s=>s.emperor.int>=55},
+  scenes:[
+   {at:25,title:"琴台凤鸣",text:"临邛富商卓氏之女文君新寡，慕才。你于席间奏《凤求凰》：「凤兮凤兮归故乡，遨游四海求其凰」——帘后裙裾微动。",
+    choices:[{text:"以琴心挑之",eff:{int:+1}},{text:"赋诗一首明志",eff:{int:+1}}]},
+   {at:55,title:"当垆沽酒",text:"文君不顾父阻，连夜相奔，甚而当垆卖酒、亲涤器皿，不以贫贱为耻——此女有同甘共苦之志。",
+    choices:[{text:"敬其决绝，许以白首",eff:{}},{text:"赐金以全其家",eff:{treasury:-4}}]},
+   {at:85,title:"白头之约",text:"文君以《白头吟》相示：「愿得一心人，白头不相离。」字字铿锵，是要你许她一世专情……",join:true,
+    choices:[{text:"纳为嫔，誓不相负",eff:{}}]}]},
+
+ {id:"hongxian", name:"紅線", portrait:_PC+"c_002.jpg", origin:"maid", woo:"martial", beauty:80, joinRank:2,
+  traitKey:"hongxian", trait:{name:"红线盗盒",desc:"夜行女侠慑奸佞，百官野心月降、谋反难起。"},
+  unlock:{desc:"大将军在任（军中举荐其潜身入宫为婢）", cond:s=>s.ministers.some(m=>m.post==="marshal")},
+  scenes:[
+   {at:25,title:"青衣藏锋",text:"一名青衣婢女红线，举止矫健异于常人。某夜你见她飞身越墙、瞬息往返——竟是身负绝艺的女侠。",
+    choices:[{text:"识破而不点破",eff:{}},{text:"延入内廷，以礼相询",eff:{}}]},
+   {at:55,title:"红线盗盒",text:"邻镇节度使蓄异志，红线一夜往返三百里，盗其床头金盒以示警，不血刃而折强藩之心。",
+    choices:[{text:"重赏其功，倚为腹心",eff:{prestige:+3}},{text:"诫其慎用，护其周全",eff:{}}]},
+   {at:85,title:"侠骨柔情",text:"红线本欲功成身退、飘然江湖，却为你「以天下为己任」之志所留。她收剑入鞘，垂首道：愿留君侧……",join:true,
+    choices:[{text:"纳为贵人，倚为干城",eff:{}}]}]},
+
+ {id:"liju", name:"麗居", portrait:_PC+"c_005.jpg", origin:"common", woo:"charm", beauty:83, joinRank:2,
+  traitKey:"jieyu", trait:{name:"解语花",desc:"善解人意，六宫情绪月稳 +1。"},
+  unlock:{desc:"国库≥50（盛世选良家，丽居以贤名入选）", cond:s=>s.nation.treasury>=50},
+  scenes:[
+   {at:25,title:"丽人初选",text:"采选良家，有女丽居者，姿容婉丽、应对从容，不矜不伐，独得众女中一份娴雅。",
+    choices:[{text:"嘉其端庄，留备六宫",eff:{}},{text:"试其才识，问以诗书",eff:{int:+1}}]},
+   {at:55,title:"解语之花",text:"宫中偶有龃龉，丽居总能两边宽解、化戾气为祥和，宫人皆称「解语花」——后宫赖以安宁。",
+    choices:[{text:"委以协理六宫之责",eff:{}},{text:"赏赐有加，以彰其德",eff:{treasury:-3}}]},
+   {at:85,title:"岁岁安宁",text:"丽居无倾国之色，却有持家之能。她为你打理后宫井井有条，今夜执灯候你归来……",join:true,
+    choices:[{text:"纳为贵人，托以中馈",eff:{}}]}]},
+
+ {id:"wenji", name:"蔡文姬", portrait:_PC+"c_007.jpg", origin:"noble", woo:"int", beauty:86, joinRank:4,
+  requirePost:"chancellor",
+  traitKey:"wenji", trait:{name:"文姬归汉",desc:"博学多才，常侍御书，帝王智力缓涨、国库月入 +1。"},
+  unlock:{desc:"任丞相满朝＋帝王智≥50＋国祚≥2（书香门第，父执居相位方堪匹配）",
+    cond:s=>s.ministers.some(m=>m.post==="chancellor")&&s.emperor.int>=50&&s.nation.year>=2},
+  scenes:[
+   {at:25,title:"隔帘琴音",text:"名儒蔡邕之女文姬，博学辩才、妙于音律。隔帘抚琴，断弦之声她不闻而知其第几——惊为奇才。",
+    choices:[{text:"叹服其慧，延以论学",eff:{int:+1}},{text:"命续蔡氏散佚之典",eff:{int:+1}}]},
+   {at:55,title:"以诗明志",text:"文姬历经离乱，作《悲愤诗》以献，字字血泪、忧国忧民。你读罢动容——此女胸中有家国。",
+    choices:[{text:"当众褒扬其才情",eff:{prestige:-1,int:+1}},{text:"私下相邀夜话",eff:{health:-1,int:+1}}]},
+   {at:85,title:"文姬归汉",text:"你以重礼聘之，文姬感你惜才如金、以国士相待，终许身相从，愿为你整典籍、佐文治……",join:true,
+    choices:[{text:"纳为妃，引为文胆",eff:{int:+2}}]}]},
+
+ {id:"mulan", name:"木蘭", portrait:_PC+"c_003.jpg", origin:"martial", woo:"martial", beauty:81, joinRank:3,
+  traitKey:"mulan", trait:{name:"替父从军",desc:"巾帼知兵，亲历行伍，在宫则兵力月增 +1。"},
+  unlock:{desc:"打赢一场战争（军功册上，发现一员『男装』小将竟是女儿身）", cond:s=>!!(s.flags&&s.flags.warWon)},
+  scenes:[
+   {at:25,title:"军中识破",text:"大胜之后论功，一员屡立战功的小将『花弧之子』入觐——你却觉其眉目清秀、声音细柔，似有蹊跷。",
+    choices:[{text:"不动声色，暗加留意",eff:{}},{text:"屏退左右，温言相询",eff:{}}]},
+   {at:55,title:"对镜帖花黄",text:"真相大白：她乃代父从军十二载的木兰。卸去戎装、对镜贴花黄，飒爽中现出娇容，满座皆惊。",
+    choices:[{text:"赦其欺君，嘉其至孝",eff:{prestige:+3}},{text:"惜其忠勇，留侍御前",eff:{military:+2}}]},
+   {at:85,title:"巾帼定情",text:"木兰本欲解甲归田、奉养双亲，你许她「忠孝两全、富贵还乡」之愿。她以军礼相拜，又含羞垂首……",join:true,
+    choices:[{text:"纳为嫔，赐还乡荣养双亲",eff:{}}]}]},
+
+ {id:"gongsun", name:"公孫大娘", portrait:_PC+"c_000.jpg", origin:"martial", woo:"martial", beauty:80, joinRank:2,
+  traitKey:"jianqi", trait:{name:"剑器浑脱",desc:"剑舞通武理，常陪君演武，帝王武力缓涨。"},
+  unlock:{desc:"帝王武力≥55（演武之余，慕剑器大家之名召之入宫）", cond:s=>s.emperor.martial>=55},
+  scenes:[
+   {at:25,title:"剑器惊鸿",text:"教坊第一人公孙大娘舞剑器，一舞而四座色沮，如羿射九日、如群帝骖龙——你看得心神俱往。",
+    choices:[{text:"亲下场与之论剑",eff:{martial:+1}},{text:"赐金帛，请其授艺",eff:{treasury:-3}}]},
+   {at:55,title:"一舞动四方",text:"你常与公孙对舞切磋，她剑走轻灵、你力贯长虹，一刚一柔。习剑既久，你武艺大进。",
+    choices:[{text:"引为剑友，惺惺相惜",eff:{martial:+1}},{text:"以国手之礼遇之",eff:{prestige:+1}}]},
+   {at:85,title:"剑胆定情",text:"公孙大娘豪爽不拘，与你既是剑友、又生情愫。她一剑封鞘、行一个江湖礼：往后，护你左右……",join:true,
+    choices:[{text:"纳为贵人，并辔同游",eff:{}}]}]},
+
+ {id:"furen", name:"李夫人", portrait:_PC+"c_004.jpg", origin:"noble", woo:"charm", beauty:95, joinRank:4,
+  traitKey:"qingguo", trait:{name:"倾国倾城",desc:"绝色摄魂，帝王魅力大涨；然红颜易老、其宠月有起落。"},
+  unlock:{desc:"威望≥45＋已纳≥1妃（乐官李延年歌『倾国倾城』，荐其妹入宫）",
+    cond:s=>s.nation.prestige>=45&&s.consorts.length>=1},
+  scenes:[
+   {at:25,title:"北方有佳人",text:"乐官李延年歌于殿前：『北方有佳人，绝世而独立，一顾倾人城，再顾倾人国。』你问：世间果有此人？",
+    choices:[{text:"叹『安得如此佳人』",eff:{charm:+1}},{text:"召其妹一见究竟",eff:{}}]},
+   {at:55,title:"一顾倾城",text:"李夫人入觐，回眸一顾，满殿生辉，果真倾城之色。你自此朝思暮想，几废寝食——左右暗忧。",
+    choices:[{text:"专宠无度，朝夕相伴",eff:{health:-1,charm:+1}},{text:"自警节制，宠之有节",eff:{politics:+1}}]},
+   {at:85,title:"倾国之恋",text:"李夫人体弱而慧，深谙『以色事人者色衰而爱弛』，从不以容自恃，反劝你勤政。今夜她浅笑相邀……",join:true,
+    choices:[{text:"纳为妃，珍之重之",eff:{}}]}]},
+
+ {id:"shouyang", name:"壽陽公主", portrait:_PC+"c_006.jpg", origin:"noble", woo:"charm", beauty:90, joinRank:5,
+  traitKey:"meihua", trait:{name:"梅花妆",desc:"金枝玉叶，母仪有度，在宫则威望月增 +1、帝王魅力缓涨。"},
+  unlock:{desc:"威望≥60＋国祚≥3（前朝公主下嫁，以固盟好、彰天家气象）",
+    cond:s=>s.nation.prestige>=60&&s.nation.year>=3},
+  scenes:[
+   {at:25,title:"梅花落额",text:"寿阳公主卧含章殿檐下，梅花飘落额心、拂之不去，宫人争相效之，成『梅花妆』——金枝玉叶，自有天家风范。",
+    choices:[{text:"赞其天生丽质",eff:{charm:+1}},{text:"敬其身份，以礼相待",eff:{prestige:+1}}]},
+   {at:55,title:"天家气象",text:"公主举止雍容、进退有度，通晓礼乐典章，每为你参详宫廷仪轨、外邦觐见之仪，颇助天朝威仪。",
+    choices:[{text:"委以掌内廷礼仪",eff:{prestige:+2}},{text:"携之同御万邦来朝",eff:{prestige:+2}}]},
+   {at:85,title:"凤仪之选",text:"公主出身高贵却不骄矜，与你日久情生。两家盟好、天作之合，群臣皆贺。今奉册宝，迎其入主东宫……",join:true,
+    choices:[{text:"纳为贵妃，以彰国体",eff:{prestige:+3}}]}]},
+
+ {id:"nongyu", name:"弄玉", portrait:_PC+"c_001.jpg", origin:"rare", woo:"int", beauty:93, joinRank:5,
+  traitKey:"xiao", trait:{name:"吹箫引凤",desc:"仙姿玉质，箫引祥瑞，在宫则国家六维月各受微益。"},
+  unlock:{desc:"国祚≥5＋威望≥70（盛世祥瑞，秦楼仙眷慕治世清明而来）",
+    cond:s=>s.nation.year>=5&&s.nation.prestige>=70},
+  scenes:[
+   {at:25,title:"凤楼闻箫",text:"夜阑人静，宫阙之上忽闻箫声清越、响遏行云，循声而往，见一女子吹紫玉箫，仿若不食人间烟火。",
+    choices:[{text:"屏息静听，不忍惊扰",eff:{int:+1}},{text:"以礼相邀，问其来历",eff:{}}]},
+   {at:55,title:"箫史和鸣",text:"你习箫与之相和，一吹一应，竟引来彩凤翔集庭中、百鸟和鸣——左右皆称太平祥瑞、圣德所感。",
+    choices:[{text:"筑凤台以待仙眷",eff:{treasury:-4,prestige:+2}},{text:"敬天惜福，谦冲自牧",eff:{prestige:+2}}]},
+   {at:85,title:"乘鸾之约",text:"弄玉本是天上仙眷，为你治世清明、苍生安乐所动，愿弃仙缘、留驻人间。今夕箫声为媒，结此良缘……",join:true,
+    choices:[{text:"纳为贵妃，珍若拱璧",eff:{prestige:+3}}]}]}
+];
+function consortTpl(id){ return CONSORTS.find(c=>c.id===id); }
+/* 从模板生成已入宫妃子对象 */
+function makeConsort(tpl){
+  return {
+    id:"con_"+tpl.id, tplId:tpl.id, name:tpl.name, portrait:tpl.portrait,
+    beauty:tpl.beauty||R.i(70,95), personality:R.pick(PERS_KEYS),
+    favor:32, bond:22, rank:tpl.joinRank||0, pregnant:null, age:R.i(16,24),
+    origin:tpl.origin, traitKey:tpl.traitKey, traitName:tpl.trait?tpl.trait.name:""
+  };
 }
 
 /* ===================================================================

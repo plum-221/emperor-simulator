@@ -169,26 +169,63 @@ function renderPanel(name){
   }
   else if(name==="harem"){
     const selecting=panelOpts.selectAction==="visit";
-    if(selecting) h+=`<p class="panel-tip">点击一位嫔妃以「临幸」（消耗此时段行动）</p>`;
-    else{
-      const left=s.pool.consorts.length;
-      h+=`<div class="recruit-bar">
-        <div class="rc-info"><b>选秀采选</b><span>耗国库 ${SELECT_COST}，纳一位良家女入宫（不重复）。可选 <b>${left}</b> 人</span></div>
-        <button class="btn btn-primary rc-btn" ${s.nation.treasury<SELECT_COST||left<=0?"disabled":""} onclick="Game.selectConsort()">采 选 ✦</button>
-      </div>`;
-    }
-    h+=s.consorts.map(c=>{
-      const preg=c.pregnant!=null?`<span class="preg">有孕 ${c.pregnant}/10</span>`:"";
-      const act=selecting?"":`<button class="chip" onclick="Game.promoteConsort('${c.id}')">晋位</button>`;
-      return `<div class="m-card" ${selecting?`onclick="Game.visitConsort('${c.id}')"`:""}>
+    if(selecting){
+      // 临幸模式：只列已入宫妃子，点选临幸
+      h+=`<p class="panel-tip">点击一位嫔妃以「临幸」（消耗此时段行动·开枝散叶）</p>`;
+      h+=s.consorts.map(c=>`<div class="m-card" onclick="Game.visitConsort('${c.id}')">
         ${img(c.portrait,"m-face")}
-        <div class="m-info">
-          <div class="m-head"><b>${c.name}</b><span class="m-post">${RANKS[c.rank]}</span><span class="m-pers">${c.personality}</span> ${preg}</div>
-          <div class="m-line">美貌 ${bar(c.beauty,"#c0397a")} ${Math.round(c.beauty)}</div>
-          <div class="m-line">宠爱 ${bar(c.favor,"#d9655a")} ${Math.round(c.favor)}</div>
-          ${act}
-        </div></div>`;
-    }).join("")||`<p class="panel-tip">后宫尚虚，待选秀充盈。</p>`;
+        <div class="m-info"><div class="m-head"><b>${c.name}</b><span class="m-post">${RANKS[c.rank]}</span></div>
+        <div class="m-line">宠爱 ${bar(c.favor,"#d9655a")} ${Math.round(c.favor)}</div></div></div>`
+      ).join("")||`<p class="panel-tip">后宫尚虚，先去攻略佳人。</p>`;
+    }else{
+      // ① 已入宫
+      h+=`<h3 class="harem-sec">凤仪 · 已入宫（${s.consorts.length}）</h3>`;
+      h+=s.consorts.map(c=>{
+        const preg=c.pregnant!=null?`<span class="preg">有孕 ${c.pregnant}/10</span>`:"";
+        const og=ORIGINS[c.origin]; const ob=og?`<span class="m-origin" style="color:${og.color}">${og.name}</span>`:"";
+        const tr=c.traitName?`<span class="m-trait" title="入宫特质">✦${c.traitName}</span>`:"";
+        return `<div class="m-card">
+          ${img(c.portrait,"m-face")}
+          <div class="m-info">
+            <div class="m-head"><b>${c.name}</b><span class="m-post">${RANKS[c.rank]}</span>${ob}${tr}${preg}</div>
+            <div class="m-line">美貌 ${bar(c.beauty,"#c0397a")} ${Math.round(c.beauty)}</div>
+            <div class="m-line">宠爱 ${bar(c.favor,"#d9655a")} ${Math.round(c.favor)}</div>
+            <div class="post-row"><button class="chip" onclick="Game.promoteConsort('${c.id}')">晋位</button></div>
+          </div></div>`;
+      }).join("")||`<p class="panel-tip">后宫尚虚——结识佳人、以心动攻略，方得佳丽入宫。</p>`;
+      // ② 可攻略
+      const woo=Game.wooableConsorts();
+      h+=`<h3 class="harem-sec">情缘 · 可攻略（${woo.length}）</h3>`;
+      if(!woo.length) h+=`<p class="panel-tip">眼下无可结识之人，且去增威望、任贤臣、建功业，自有佳人入眼。</p>`;
+      h+=woo.map(t=>{
+        const r=Game.romanceOf(t.id); const og=ORIGINS[t.origin];
+        const blocked=t.requirePost && !s.ministers.some(m=>m.post===t.requirePost);
+        const gift=s.nation.treasury<6;
+        return `<div class="m-card woo">
+          ${img(t.portrait,"m-face")}
+          <div class="m-info">
+            <div class="m-head"><b>${t.name}</b><span class="m-origin" style="color:${og.color}">${og.name}</span><span class="m-woo">偏好·${WOO_NAME[t.woo]}</span></div>
+            <div class="m-line">心动 ${bar(r.aff,"#e0709a")} ${r.aff}/100</div>
+            <div class="m-line woo-desc">${t.scenes.find((sc,i)=>!r.seen.includes(i))?("下一幕 心动达 "+t.scenes.find((sc,i)=>!r.seen.includes(i)).at):"情意渐浓…"}　特质·${t.trait.name}</div>
+            ${blocked?`<p class="woo-block">⚠ ${t.unlock.desc}——门第现已失势，暂难亲近</p>`:`<div class="post-row">
+              <button class="chip woo-btn" onclick="Game.wooConsort('${t.id}','meet')">相会（吃${WOO_NAME[t.woo]}）</button>
+              <button class="chip woo-btn" ${gift?"disabled":""} onclick="Game.wooConsort('${t.id}','gift')">赠礼 ✦6</button>
+            </div>`}
+          </div></div>`;
+      }).join("");
+      // ③ 待解锁
+      const locked=Game.lockedConsorts();
+      if(locked.length){
+        h+=`<h3 class="harem-sec">待解锁（${locked.length}）</h3>`;
+        h+=locked.map(t=>{const og=ORIGINS[t.origin];
+          return `<div class="m-card locked">
+            <div class="m-face noface silh">？</div>
+            <div class="m-info"><div class="m-head"><b>？？？</b><span class="m-origin" style="color:${og.color}">${og.name}</span></div>
+            <div class="m-line lock-cond">🔒 ${t.unlock.desc}</div></div></div>`;
+        }).join("");
+      }
+      h+=`<p class="panel-tip">※ 攻略行动在「后宫」面板进行，消耗当前时段。心动跨阈值触发剧情，终幕纳入后宫，赐予出身特质。临幸（开枝散叶）走底部行动·入夜可行。</p>`;
+    }
   }
   else if(name==="heir"){
     h+=s.children.length?s.children.map(c=>{

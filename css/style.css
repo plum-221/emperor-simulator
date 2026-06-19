@@ -360,6 +360,23 @@ b{color:var(--gold-br);font-weight:600;}
 .bt-log-item:last-child{border-bottom:none;}
 .bt-log-item.fresh{color:var(--gold-br);}
 
+/* ============ 后宫攻略系统（P9） ============ */
+.harem-sec{color:var(--gold-br);font-size:15px;margin:16px 0 8px;padding-bottom:5px;
+  border-bottom:1px solid rgba(217,182,95,.28);letter-spacing:.08em;}
+.harem-sec:first-child{margin-top:0;}
+.m-origin{font-size:11px;padding:1px 7px;border:1px solid currentColor;border-radius:8px;opacity:.9;}
+.m-woo{font-size:11px;color:#e0709a;}
+.m-trait{font-size:11px;color:var(--gold-br);}
+.woo-desc{font-size:11.5px;color:var(--paper-2);opacity:.82;}
+.m-card.woo{border-color:rgba(224,112,154,.45);}
+.woo-btn{border-color:#b65a7e !important;}
+.woo-btn:hover{background:rgba(224,112,154,.18);}
+.woo-block{font-size:11.5px;color:#c0563a;margin:4px 0 0;}
+.m-card.locked{opacity:.6;filter:grayscale(.5);}
+.m-face.silh{display:grid;place-items:center;font-size:30px;color:#5a4a3a;
+  background:repeating-linear-gradient(135deg,#2a1d12,#2a1d12 6px,#241810 6px,#241810 12px);}
+.lock-cond{font-size:11.5px;color:#b89a6a;}
+
 /* ============ 响应式 ============ */
 @media (max-width:760px){
   .layout{flex-direction:column;gap:10px;padding:10px;overflow-y:auto;}
