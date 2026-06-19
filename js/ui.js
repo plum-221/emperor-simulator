@@ -364,15 +364,48 @@ function openHelp(){
   <p>国库枯竭、民心尽失、兵败国破、权臣篡位或绝嗣，皆会<b>亡国</b>。在位长久、国力均衡、威望卓著的明君，方能青史留名为<b>千古一帝</b>。</p>`);
 }
 
+/* ---------- 存档管理 ---------- */
+function fmtSaveTime(ts){ const d=new Date(ts), p=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+/* mode: "save" 游戏内(可存入/读取/删除) · "load" 标题页(仅读取/删除) */
+function openArchive(mode){
+  Game._archiveMode=mode;
+  const metas=Game.slotsMeta();
+  let h=`<h2>存档 ✦ <span class="ar-sub">${mode==="save"?"存入 · 读取 · 删除":"读取存档"}</span></h2><div class="slots">`;
+  for(let i=0;i<metas.length;i++){
+    const m=metas[i];
+    h+=`<div class="slot ${m?"used":"empty"}">
+      <div class="slot-no">${i+1}</div>
+      <div class="slot-info">${m?`<b>${m.dynasty} · ${m.reign}帝</b><span>${m.year}年${m.month}月 · 第 ${m.gen} 代 · 国运 ${m.score}</span><i>${fmtSaveTime(m.ts)}</i>`:`<span class="slot-none">— 空 档 —</span>`}</div>
+      <div class="slot-btns">
+        ${mode==="save"?`<button class="chip gold" onclick="Game.saveToSlot(${i})">${m?"覆盖":"存入"}</button>`:""}
+        ${m?`<button class="chip" onclick="Game.loadFromSlot(${i})">读取</button>`:""}
+        ${m?`<button class="chip danger" onclick="Game.deleteSlot(${i})">删除</button>`:""}
+      </div></div>`;
+  }
+  h+=`</div><p class="panel-tip">※ 存档存于本机浏览器（清除浏览器数据会丢失）。「继续上局」是自动存档，与此处 6 格手动存档互不影响。</p>`;
+  openModal(h);
+}
+function openGameMenu(){
+  openModal(`<h2>菜单</h2><div class="menu-list">
+    <button class="btn btn-primary" onclick="UI.openArchive('save')">💾 存档 / 读档</button>
+    <button class="btn" onclick="UI.openHelp()">📜 玩法说明</button>
+    <button class="btn" onclick="UI.backToTitle()">🏛 返回标题</button>
+    <button class="btn ghost" onclick="UI.closeModal()">✖ 继续游戏</button>
+  </div><p class="panel-tip">※ 进度已自动保存，返回标题后可「继续上局」。</p>`);
+}
+function backToTitle(){ closeModal(); show("title"); showRecord(); }
+
 function boot(){
   Game.init().then(()=>{
     showRecord();
     $("btn-start").onclick=()=>Game.newGame($("inp-dynasty").value.trim(),$("inp-name").value.trim(),$("inp-reign").value.trim());
     $("btn-continue").onclick=()=>{ if(!Game.load()) toast("无存档"); };
+    $("btn-load").onclick=()=>openArchive("load");
     $("btn-help").onclick=openHelp;
     $("btn-replay").onclick=()=>{ show("title"); showRecord(); };
     $("btn-next").onclick=()=>Game.nextTurn();
-    $("btn-menu").onclick=()=>{ if(confirm("返回标题？（进度已自动保存，可“继续上局”）")){ show("title"); showRecord(); } };
+    $("btn-menu").onclick=openGameMenu;
     [...document.querySelectorAll(".tab[data-panel]")].forEach(t=>{
       t.onclick=()=>openPanel(t.dataset.panel);
       const ic=t.querySelector(".tico"); if(ic) ic.innerHTML=ICONS[t.dataset.panel]||"";
@@ -387,7 +420,7 @@ function boot(){
 
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
-  openModal, closeModal, boot};
+  openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle, boot};
 })();
 
 UI.boot();

@@ -449,6 +449,23 @@ b{color:var(--gold-br);font-weight:600;}
   border:1px dashed rgba(154,115,39,.4);color:#8a6a3a;background:rgba(0,0,0,.04);}
 .bond.on{border-style:solid;border-color:var(--gold-br);color:var(--gold-br);background:rgba(217,182,95,.14);font-weight:600;}
 
+/* ============ 存档管理 / 菜单 ============ */
+.ar-sub{font-size:13px;color:var(--gold-dk);font-weight:400;}
+.slots{display:flex;flex-direction:column;gap:9px;margin:6px 0 4px;}
+.slot{display:flex;align-items:center;gap:11px;padding:9px 11px;border:1px solid var(--gold-dk);border-radius:11px;background:rgba(217,182,95,.05);}
+.slot.empty{opacity:.72;border-style:dashed;}
+.slot-no{flex-shrink:0;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--red-deep);color:var(--gold-br);font-weight:600;border:1px solid var(--gold-dk);font-size:14px;}
+.slot-info{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0;}
+.slot-info b{color:var(--ink);font-size:14px;}
+.slot-info span{font-size:12px;color:#6a4a2a;}
+.slot-info i{font-size:11px;color:#9a8050;font-style:normal;}
+.slot-none{color:#9a8050;font-size:13px;}
+.slot-btns{display:flex;gap:5px;flex-shrink:0;}
+.menu-list{display:flex;flex-direction:column;gap:9px;margin:8px 0;}
+.menu-list .btn{width:100%;font-size:15px;padding:11px;border-radius:11px;}
+.btn.ghost{background:transparent;border:1px solid var(--gold-dk);color:var(--gold-dk);}
+
 /* ============ 响应式 ============ */
 @media (max-width:760px){
   .layout{flex-direction:column;gap:10px;padding:10px;overflow-y:auto;}

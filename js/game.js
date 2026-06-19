@@ -812,12 +812,38 @@ const api = {
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
-  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; if(!d.weaponLv)d.weaponLv={}; if(!d.talents)d.talents=[]; if(d.talentPts==null)d.talentPts=0; this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
+  /* 旧档字段补全（惰性 migration），新存档结构变化时在此兜底 */
+  _migrate(d){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; if(!d.weaponLv)d.weaponLv={}; if(!d.talents)d.talents=[]; if(d.talentPts==null)d.talentPts=0; return d; },
+  /* 把一份状态对象装载为当前游戏并进入游戏界面 */
+  _adopt(d){ this._migrate(d); this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); },
+  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ this._adopt(d); return true; } }catch(e){} return false; },
+
+  /* ---------- 多格手动存档（与自动存档「继续上局」并存）---------- */
+  slotMeta(i){ try{ const d=JSON.parse(localStorage.getItem(LS_SLOT(i))); return d?d.meta:null; }catch(e){ return null; } },
+  slotsMeta(){ const a=[]; for(let i=0;i<SLOT_COUNT;i++) a.push(this.slotMeta(i)); return a; },
+  saveToSlot(i){
+    if(!this.s || this.s.over){ this.toast("当前无进行中的存档"); return; }
+    const s=this.s, meta={dynasty:s.dynasty, reign:s.reign, name:s.emperor.name,
+      year:s.nation.year, month:s.nation.month, gen:s.gen, score:this.score(), ts:Date.now()};
+    try{ localStorage.setItem(LS_SLOT(i), JSON.stringify({meta, snap:s})); SFX.good(); this.toast(`已存入 存档${i+1}`); }
+    catch(e){ this.toast("存档失败（浏览器空间不足）"); }
+    UI.openArchive(this._archiveMode||"save");
+  },
+  loadFromSlot(i){
+    try{ const d=JSON.parse(localStorage.getItem(LS_SLOT(i)));
+      if(!d||!d.snap){ this.toast("此格为空"); return; }
+      const dd=d.snap; this._adopt(dd);
+      try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){}   // 同步为自动存档，下次「继续上局」即此局
+      UI.closeModal(); SFX.gong(); this.toast(`读取 存档${i+1}`);
+    }catch(e){ this.toast("读档失败（存档已损坏）"); }
+  },
+  deleteSlot(i){ try{ localStorage.removeItem(LS_SLOT(i)); }catch(e){} this.toast(`已删除 存档${i+1}`); UI.openArchive(this._archiveMode||"save"); },
   saveBest(){ const s=this.s; const best=JSON.parse(localStorage.getItem(LS_BEST)||"null");
     const cur={dynasty:s.dynasty,years:s.nation.year,gen:s.gen,score:this.score()};
     if(!best||cur.score>best.score) localStorage.setItem(LS_BEST, JSON.stringify(cur)); }
 };
 
 const LS_SAVE="zjjs_save", LS_BEST="zjjs_best";
+const SLOT_COUNT=6, LS_SLOT=i=>"zjjs_slot_"+i;
 return api;
 })();
