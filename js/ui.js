@@ -396,6 +396,35 @@ function openGameMenu(){
 }
 function backToTitle(){ closeModal(); show("title"); showRecord(); }
 
+/* ---------- 开场预加载：把所有立绘一次性载入浏览器缓存，进局后立绘即开即显 ---------- */
+function collectAssetUrls(){
+  const M=Game.manifest||{}, set=new Set(), add=u=>{ if(u) set.add(u); };
+  (M.ministers||[]).forEach(x=>add(x.file));
+  (M.generals ||[]).forEach(x=>add(x.file));
+  (M.consorts ||[]).forEach(x=>add(x.file));
+  if(typeof CONSORTS!=="undefined")     CONSORTS.forEach(c=>add(c.portrait));
+  if(typeof EMPEROR_BANDS!=="undefined") EMPEROR_BANDS.forEach(b=>add("assets/portraits/emperor/"+b.key+".png"));
+  if(typeof CHILD_STAGES!=="undefined")  CHILD_STAGES.forEach(st=>add("assets/portraits/children/"+st.key+".png"));
+  if(typeof WEAPONS!=="undefined")       WEAPONS.forEach(w=>add(w.img));
+  return [...set];
+}
+function preloadAssets(done){
+  const urls=collectAssetUrls(), total=urls.length;
+  const fill=$("pl-fill"), txt=$("pl-text"), pl=$("preloader");
+  let loaded=0, finished=false;
+  const finish=()=>{ if(finished) return; finished=true;
+    if(pl){ pl.classList.add("done"); setTimeout(()=>{ pl.style.display="none"; },520); }
+    done&&done(); };
+  if(!total){ finish(); return; }
+  const tick=()=>{ loaded++;
+    const pct=Math.round(loaded/total*100);
+    if(fill) fill.style.width=pct+"%";
+    if(txt)  txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
+    if(loaded>=total) finish();
+  };
+  urls.forEach(u=>{ const im=new Image(); im.onload=im.onerror=tick; im.src=u; });
+  setTimeout(()=>{ if(!finished){ if(txt) txt.textContent="仪仗就绪，恭请登基"; finish(); } }, 20000); // 兜底：个别图卡住也放行
+}
 function boot(){
   Game.init().then(()=>{
     showRecord();
@@ -415,6 +444,7 @@ function boot(){
     $("panel-mask").onclick=e=>{ if(e.target===$("panel-mask")) closePanel(); };
     $("modal-close").onclick=closeModal;
     document.addEventListener("click",()=>SFX.unlock(),{once:true});
+    preloadAssets();   // 预加载全部立绘 → 进度条满后揭开标题
   });
 }
 
