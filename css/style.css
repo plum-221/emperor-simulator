@@ -413,19 +413,28 @@ b{color:var(--gold-br);font-weight:600;}
 .chip.gold{border-color:var(--gold-br);color:var(--gold-br);}
 .talent-btn{width:100%;margin-top:12px;font-size:14px;letter-spacing:.08em;padding:8px;border-radius:10px;}
 .tp-badge{display:inline-block;min-width:16px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-style:normal;}
-.talent-tree h2{text-align:center;color:var(--red-deep);}
+/* 天赋弹窗：加宽 + 三系并排成列 → 不再竖向溢出；并隐藏其滚动条 */
+.modal-box:has(.talent-tree){max-width:680px;scrollbar-width:none;-ms-overflow-style:none;}
+.modal-box:has(.talent-tree)::-webkit-scrollbar{display:none;}
+.talent-tree{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start;}
+.talent-tree h2{text-align:center;color:var(--red-deep);grid-column:1/-1;margin:4px 0 2px;}
 .talent-tree .tp{font-size:13px;color:var(--gold-dk);}
-.tl-branch{margin:12px 0;border:1px solid var(--gold-dk);border-radius:10px;padding:10px;background:rgba(217,182,95,.05);}
+.talent-tree .panel-tip{grid-column:1/-1;margin:4px 0 0;}
+.tl-branch{margin:0;border:1px solid var(--gold-dk);border-radius:10px;padding:9px;background:rgba(217,182,95,.05);}
 .tl-bh{color:var(--red);font-size:15px;font-weight:600;margin-bottom:8px;border-bottom:1px solid rgba(179,38,30,.2);padding-bottom:4px;}
-.tl-node{padding:7px 0;border-bottom:1px dashed rgba(154,115,39,.2);}
+.tl-node{padding:6px 0;border-bottom:1px dashed rgba(154,115,39,.2);}
 .tl-node:last-child{border-bottom:none;}
 .tl-node.on{opacity:1;}
 .tl-node.lock{opacity:.5;}
-.tl-n{display:flex;justify-content:space-between;align-items:center;}
-.tl-n b{color:var(--ink);font-size:14px;}
-.tl-ok{color:#4a8f5e;font-size:12px;}
-.tl-d{font-size:12px;color:#6a4a2a;margin-top:3px;line-height:1.5;}
+.tl-n{display:flex;justify-content:space-between;align-items:center;gap:5px;}
+.tl-n b{color:var(--ink);font-size:13.5px;}
+.tl-n .chip{flex-shrink:0;white-space:nowrap;}
+.tl-ok{color:#4a8f5e;font-size:12px;white-space:nowrap;}
+.tl-d{font-size:11.5px;color:#6a4a2a;margin-top:3px;line-height:1.45;}
 .tl-req{color:#b3261e;}
+@media (max-width:760px){
+  .talent-tree{grid-template-columns:1fr;}   /* 窄屏单列；滚动条已隐藏 */
+}
 /* 武器强化标签 + 强化按钮 */
 .wp-lv{color:#e0b94a;font-size:10px;font-style:normal;margin-left:2px;}
 .wp-forge{margin-left:4px;font-size:10px;padding:1px 6px;border-radius:7px;cursor:pointer;
