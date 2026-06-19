@@ -407,6 +407,39 @@ b{color:var(--gold-br);font-weight:600;}
   background:repeating-linear-gradient(135deg,#2a1d12,#2a1d12 6px,#241810 6px,#241810 12px);border:1px solid #4a3a2a;}
 .title-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
 
+/* ============ 养成：武将等级 / 帝王天赋（P10 批3） ============ */
+.m-lv{margin-left:6px;color:var(--gold-br);font-size:11px;border:1px solid var(--gold-dk);border-radius:6px;padding:0 5px;}
+.m-exp{margin-left:5px;color:#8aa;font-size:10.5px;}
+.chip.gold{border-color:var(--gold-br);color:var(--gold-br);}
+.talent-btn{width:100%;margin-top:12px;font-size:14px;letter-spacing:.08em;padding:8px;border-radius:10px;}
+.tp-badge{display:inline-block;min-width:16px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-style:normal;}
+.talent-tree h2{text-align:center;color:var(--red-deep);}
+.talent-tree .tp{font-size:13px;color:var(--gold-dk);}
+.tl-branch{margin:12px 0;border:1px solid var(--gold-dk);border-radius:10px;padding:10px;background:rgba(217,182,95,.05);}
+.tl-bh{color:var(--red);font-size:15px;font-weight:600;margin-bottom:8px;border-bottom:1px solid rgba(179,38,30,.2);padding-bottom:4px;}
+.tl-node{padding:7px 0;border-bottom:1px dashed rgba(154,115,39,.2);}
+.tl-node:last-child{border-bottom:none;}
+.tl-node.on{opacity:1;}
+.tl-node.lock{opacity:.5;}
+.tl-n{display:flex;justify-content:space-between;align-items:center;}
+.tl-n b{color:var(--ink);font-size:14px;}
+.tl-ok{color:#4a8f5e;font-size:12px;}
+.tl-d{font-size:12px;color:#6a4a2a;margin-top:3px;line-height:1.5;}
+.tl-req{color:#b3261e;}
+/* 武器强化标签 + 强化按钮 */
+.wp-lv{color:#e0b94a;font-size:10px;font-style:normal;margin-left:2px;}
+.wp-forge{margin-left:4px;font-size:10px;padding:1px 6px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--gold-dk);background:rgba(217,182,95,.12);color:var(--gold-br);}
+.wp-forge.off{opacity:.4;cursor:default;}
+.wp-forge:not(.off):hover{background:rgba(217,182,95,.28);}
+/* 朝堂羁绊 */
+.bonds{margin:8px 0 4px;padding:8px 10px;border:1px solid var(--gold-dk);border-radius:10px;background:rgba(179,38,30,.04);}
+.bonds-h{font-size:13px;color:var(--red);font-weight:600;margin-bottom:6px;}
+.bonds-h span{font-size:11px;color:#8a6a3a;font-weight:400;margin-left:6px;}
+.bond{display:inline-block;margin:3px 5px 3px 0;padding:2px 9px;border-radius:9px;font-size:12px;
+  border:1px dashed rgba(154,115,39,.4);color:#8a6a3a;background:rgba(0,0,0,.04);}
+.bond.on{border-style:solid;border-color:var(--gold-br);color:var(--gold-br);background:rgba(217,182,95,.14);font-weight:600;}
+
 /* ============ 响应式 ============ */
 @media (max-width:760px){
   .layout{flex-direction:column;gap:10px;padding:10px;overflow-y:auto;}

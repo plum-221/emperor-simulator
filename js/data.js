@@ -119,6 +119,25 @@ const WEAPONS = [
 ];
 function weaponById(id){ return WEAPONS.find(w=>w.id===id); }
 function rollWeapon(){ const t=rollTier(0); const pool=WEAPONS.filter(w=>w.tier===t); return R.pick(pool.length?pool:WEAPONS); }
+/* 武器强化（P10 批3）：耗碎片提升兵器加成。等级 0..MAX，每级 +FORGE_STEP，耗费随级递增。 */
+const FORGE_STEP = 3, FORGE_MAX = 5, FORGE_BASE = 4;        // 加成步长 / 上限 / 基础碎片
+function forgeCost(lv){ return FORGE_BASE + lv*2; }         // lv0→4 · lv1→6 … lv4→12
+
+/* ---------- 武将羁绊（P10 批3·阵容协同）----------
+   按朝堂「组合」触发被动加成（玩家可经招贤/任命/铸兵主动凑齐），
+   不依赖随机姓名。其中「神兵在握」即兵器谱·套装效果。月结算统一在 Game.applyBonds。 */
+const BONDS = [
+  {id:"b_wenwu", name:"出将入相", icon:"⚖", desc:"文官、武将各 ≥3 人在朝 → 国库 +2 · 兵力 +2 /月",
+    cond:s=>s.ministers.filter(m=>m.kind==="civil").length>=3 && s.ministers.filter(m=>m.kind==="martial").length>=3},
+  {id:"b_zhong", name:"群贤毕至", icon:"✦", desc:"朝臣 ≥8 人 → 民心 +1 · 招贤点 +1 /月",
+    cond:s=>s.ministers.length>=8},
+  {id:"b_elite", name:"众星拱月", icon:"★", desc:"≥2 位 ★★★ 重臣在朝 → 威望 +2 /月",
+    cond:s=>s.ministers.filter(m=>(m.tier||"low")==="high").length>=2},
+  {id:"b_loyal", name:"上下同心", icon:"❤", desc:"全体朝臣忠诚 ≥70 → 百官野心 −2 · 招贤点 +1 /月",
+    cond:s=>s.ministers.length>0 && s.ministers.every(m=>m.loyalty>=70)},
+  {id:"b_arms",  name:"神兵在握", icon:"⚔", desc:"≥3 位将相佩兵器（兵器谱·套装）→ 兵力 +1 · 威望 +1 /月",
+    cond:s=>s.ministers.filter(m=>m.weapon).length>=3}
+];
 
 /* 敌国/番邦 */
 const ENEMIES = ["北狄","西羌","东瀛","南诏","匈奴","突厥","契丹","吐蕃"];
@@ -164,30 +183,62 @@ const TIER_STATS = {
   high: {main:[72,92], off:[38,62]}
 };
 const _statRange = t => TIER_STATS[t] || TIER_STATS.mid;
+
+/* ---------- 原创人名生成（架空王朝·不用历史人名）----------
+   manifest 里随附的姓名多为真实历史人物（孔门弟子等），用在架空背景里出戏；
+   故角色姓名一律由本生成器现造：复/单姓 + 1~2 字名。全局去重，立绘仍取自 manifest。 */
+const SURNAMES = ("慕容 司马 上官 独孤 宇文 长孙 欧阳 南宫 西门 东方 端木 皇甫 尉迟 令狐 钟离 闻人 公冶 轩辕 赫连 澹台 仲孙 百里 东郭 "
+ +"萧 沈 苏 陆 顾 裴 卫 崔 卢 柳 江 温 薛 霍 岑 桓 殷 阮 厉 戚 商 蓝 燕 元 楚 卓 凌 简 计 步 邵").trim().split(/\s+/).filter(x=>/[一-龥]/.test(x));
+const GIVEN_CHARS = "珩玦翊彧瑀瑒旸砚琰珏璟琤珝晔暠勖劭頔翯勍彣斐然朗逸尘骁烬戈彻钺霆烈毅锐承钧泽宸曜澈渊昭瑞弘睿晟煜熙凛肃恪慎诫衡谦"
+  .split("").filter(x=>/[一-龥]/.test(x));
+const _usedNames = new Set();
+function makeOfficialName(){
+  for(let i=0;i<80;i++){
+    const sur=R.pick(SURNAMES);
+    const len=R.chance(62)?2:1;                         // 多数双字名
+    let given=R.pick(GIVEN_CHARS); if(len===2){ let c2=R.pick(GIVEN_CHARS); if(c2!==given) given+=c2; }
+    const full=sur+given;
+    if(!_usedNames.has(full)){ _usedNames.add(full); return full; }
+  }
+  const fb=R.pick(SURNAMES)+R.pick(GIVEN_CHARS)+(_usedNames.size); _usedNames.add(fb); return fb;
+}
+
 function buildMinisters(list, n, tier){
   const sel = R.shuffle(list).slice(0,n); const rg=_statRange(tier||"mid");
   return sel.map((m,idx)=>({
     id:"min"+idx+"_"+Date.now()%9999+idx,
-    name:m.name, portrait:m.file,
+    name:makeOfficialName(), portrait:m.file,
     civ:R.i(rg.main[0],rg.main[1]), mil:R.i(rg.off[0],rg.off[1]),
     loyalty:R.i(55,88), ambition:R.i(5,45),
     personality:R.pick(PERS_KEYS),
     post:null, age:R.i(28,60), reward:0,
-    tier:tier||"mid", kind:"civil", weapon:null
+    tier:tier||"mid", kind:"civil", weapon:null, level:1, exp:0
   }));
 }
 function buildGenerals(list, n, tier){
   const sel = R.shuffle(list).slice(0,n); const rg=_statRange(tier||"mid");
   return sel.map((m,idx)=>({
     id:"gen"+idx+"_"+Date.now()%9999+idx,
-    name:m.name, portrait:m.file,
+    name:makeOfficialName(), portrait:m.file,
     civ:R.i(rg.off[0],rg.off[1]), mil:R.i(rg.main[0],rg.main[1]),
     loyalty:R.i(55,90), ambition:R.i(10,55),
     personality:R.pick(PERS_KEYS),
     post:null, age:R.i(30,58), reward:0,
-    tier:tier||"mid", kind:"martial", weapon:null
+    tier:tier||"mid", kind:"martial", weapon:null, level:1, exp:0
   }));
 }
+
+/* ---------- 帝王天赋树（P10 批3·养成）---------- */
+const TALENTS = [
+ {id:"t_diligence",branch:"文治",name:"宵衣旰食",desc:"勤政所得国库 +50%。",cost:1,req:null},
+ {id:"t_finance",  branch:"文治",name:"理财有道",desc:"每月税入额外 +2。",cost:1,req:"t_diligence"},
+ {id:"t_drill",    branch:"武功",name:"治军严明",desc:"兵员月损耗减半。",cost:1,req:null},
+ {id:"t_strategy", branch:"武功",name:"运筹帷幄",desc:"战阵战力 +8。",cost:1,req:"t_drill"},
+ {id:"t_benevol",  branch:"仁德",name:"仁泽万民",desc:"民心自然回落减半。",cost:1,req:null},
+ {id:"t_charm",    branch:"仁德",name:"风流天子",desc:"攻略心动收益 +40%。",cost:1,req:"t_benevol"}
+];
+const TALENT_BRANCHES=["文治","武功","仁德"];
+function talentById(id){ return TALENTS.find(t=>t.id===id); }
 function buildConsorts(list, n){
   const sel = R.shuffle(list).slice(0,n);
   return sel.map((c,idx)=>({

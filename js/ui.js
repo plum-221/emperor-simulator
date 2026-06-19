@@ -42,12 +42,13 @@ function renderEmperor(){
   $("emp-portrait").innerHTML=img(emperorFace(e.age),"emp-face");
   $("emp-name").textContent=e.name+" 帝";
   $("emp-age").textContent=`圣寿 ${e.age} · 第 ${Game.s.gen} 代`;
+  const tp=Game.s.talentPts||0;
   $("emp-attrs").innerHTML=Object.keys(EMP_ATTRS).map(k=>{
     const m=EMP_ATTRS[k],v=Math.round(e[k]);
     return `<div class="attr"><span class="attr-n">${m.name}</span>
       <span class="attr-bar"><i style="width:${v}%;background:${m.color}"></i></span>
       <span class="attr-v">${v}</span></div>`;
-  }).join("");
+  }).join("")+`<button class="btn btn-primary talent-btn" onclick="Game.openTalents()">✦ 帝王天赋${tp>0?` <em class="tp-badge">${tp}</em>`:""}</button>`;
 }
 
 /* ---------- 事件卡 ---------- */
@@ -151,17 +152,25 @@ function renderPanel(name){
         <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<GACHA.cost?"disabled":""} onclick="Game.weaponDraw()">铸兵 ⚔ ${GACHA.cost}点</button>
       </div>`;
       if(owned.length) h+=`<div class="armory">`+owned.map(w=>{const tg=GACHA.tiers[w.tier];const on=s.ministers.find(x=>x.weapon===w.id);
-        return `<span class="wp-chip" style="border-color:${tg.color}" title="${w.desc}">${img(w.img,"wp-mini")}<b>${w.name}</b><i style="color:${tg.color}">${w.stat==="mil"?"武":"文"}+${w.bonus}</i>${on?`<u>${on.name}</u>`:`<u class="idle">未佩</u>`}</span>`;}).join("")+`</div>`;
+        const lv=(s.weaponLv&&s.weaponLv[w.id])||0; const eff=w.bonus+lv*FORGE_STEP;
+        const maxed=lv>=FORGE_MAX; const fc=forgeCost(lv); const canForge=!maxed&&(s.shards||0)>=fc;
+        const forgeBtn=`<button class="wp-forge ${canForge?"":"off"}" ${canForge?"":"disabled"} onclick="Game.forgeWeapon('${w.id}')" title="强化 +${FORGE_STEP}（耗碎片 ${fc}）">${maxed?"✦满":`强化✦${fc}`}</button>`;
+        return `<span class="wp-chip" style="border-color:${tg.color}" title="${w.desc}">${img(w.img,"wp-mini")}<b>${w.name}${lv?`<em class="wp-lv">+${lv*FORGE_STEP}</em>`:""}</b><i style="color:${tg.color}">${w.stat==="mil"?"武":"文"}+${eff}</i>${on?`<u>${on.name}</u>`:`<u class="idle">未佩</u>`}${forgeBtn}</span>`;}).join("")+`</div>`;
+      // 羁绊（阵容协同）
+      h+=`<div class="bonds"><div class="bonds-h">朝堂羁绊 <span>组合达成即享被动加成</span></div>`+
+        BONDS.map(b=>{const on=b.cond(s);return `<span class="bond ${on?"on":""}" title="${b.desc}">${b.icon} ${b.name}${on?" ✓":""}</span>`;}).join("")+`</div>`;
     }
     h+=s.ministers.map(m=>{
       const pos=m.post?POSITIONS.find(p=>p.id===m.post).name:"（闲职）";
       const tg=GACHA.tiers[m.tier||"mid"];
       const upBtn=(s.shards||0)>=UPGRADE_COST?`<button class="chip" onclick="Game.upgradeMinister('${m.id}')">碎片精进 ✦${UPGRADE_COST}</button>`:"";
+      const canBk=(m.level||1)>=5 && (m.tier||"low")!=="high";
+      const bkBtn=selecting?"":`<button class="chip ${canBk&&(s.shards||0)>=8?"gold":""}" ${canBk?"":"disabled"} onclick="Game.breakthrough('${m.id}')" title="Lv5且非满星可突破·耗碎片8">突破 ⤴${canBk?" ✦8":""}</button>`;
       const wpSel=(!selecting&&owned.length)?`<select class="wp-sel" onchange="Game.equipWeapon('${m.id}',this.value)">
-        <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus}</option>`).join("")+`</select>`:"";
+        <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus+((s.weaponLv&&s.weaponLv[w.id])||0)*FORGE_STEP}</option>`).join("")+`</select>`:"";
       const postBtns=selecting?"":`<div class="post-row">`+
         POSITIONS.map(p=>`<button class="chip ${m.post===p.id?"on":""}" onclick="Game.appoint('${m.id}','${m.post===p.id?"":p.id}')">${p.name}</button>`).join("")+
-        `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+wpSel+
+        `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+bkBtn+wpSel+
         `<button class="chip warn" onclick="Game.dismissMinister('${m.id}')">罢免</button>`+
         `<button class="chip danger" onclick="Game.executeMinister('${m.id}')">处死</button></div>`;
       const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">⚔${w.name}</span>`:"";})():"";
@@ -169,7 +178,7 @@ function renderPanel(name){
         ${img(m.portrait,"m-face")}
         <div class="m-info">
           <div class="m-head"><b>${m.name}</b><span class="m-tier" style="color:${tg.color}" title="${tg.name}">${tg.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span></div>
-          <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil}</div>
+          <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil} <span class="m-lv">Lv${m.level||1}</span><span class="m-exp">${m.exp||0}/${(m.level||1)*10}</span></div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
         </div></div>`;

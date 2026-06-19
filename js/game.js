@@ -63,7 +63,9 @@ const api = {
       },
       blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池
       recruitPoints:30, shards:0, gachaPity:0,   // 招贤点 / 升级碎片 / 保底计数
+      talentPts:1, talents:[],                    // 帝王天赋点 / 已点天赋
       weapons:[],   // 已得武器 id 列表（武库）
+      weaponLv:{},  // 武器强化等级 {[wid]:lv}
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
@@ -151,7 +153,8 @@ const api = {
      自然趋近上限而不会一两月顶到 100。grow(cur,base) 见文件顶部。 */
   ACTIONS:{
     govern:{name:"勤政",icon:ICONS.govern,hint:"批阅奏章，理政安民（晨/午）",phases:["morn","noon"],run(s){
-      const g=s.emperor.politics, dt=Math.max(1,Math.round(g/50));
+      const g=s.emperor.politics; let dt=Math.max(1,Math.round(g/50));
+      if(Game.hasTalent("t_diligence")) dt=Math.round(dt*1.5);   // 天赋·宵衣旰食
       s.nation.treasury+=dt; if(R.chance(45))s.nation.people+=1;
       s.recruitPoints=(s.recruitPoints||0)+1;   // 勤政纳贤：积累招贤点
       s.emperor.health-=1; s.emperor.exp+=1;
@@ -172,7 +175,7 @@ const api = {
       s.emperor.health+=R.i(3,5);
       return "静心休养，龙体渐安。";}},
     inspect:{name:"微服私访",icon:ICONS.visit,hint:"微服出宫，奇遇连连（午/夜）",phases:["noon","eve"],run(s){
-      G.startInspection(); return "";}}
+      Game.startInspection(); return "";}}
   },
 
   doAction(type){
@@ -201,8 +204,9 @@ const api = {
     const s=this.s; const m=s.ministers.find(x=>x.id===id); if(!m)return;
     if(s.actedThisTurn){ this.toast("此时段已行一事"); return; }
     m.loyalty=R.clamp(m.loyalty+R.i(5,10)); m.ambition=R.clamp(m.ambition-R.i(2,5));
+    this.gainExp(m,6);
     s.actedThisTurn=true; SFX.good();
-    this.toast(`召见 ${m.name}，君臣相得，忠诚提升。`); UI.closePanel(); this.renderTurn();
+    this.toast(`召见 ${m.name}，君臣相得，忠诚提升、历练渐增。`); UI.closePanel(); this.renderTurn();
   },
 
   /* ---------- 任命 / 后宫管理 ---------- */
@@ -277,6 +281,54 @@ const api = {
     return m;
   },
   earnPoints(n,reason){ const s=this.s; if(n<=0)return; s.recruitPoints=(s.recruitPoints||0)+n; if(reason)this.logMsg(`${reason}，招贤点 +${n}。`); },
+  /* ---------- 养成：武将经验/升级/突破 + 帝王天赋 ---------- */
+  hasTalent(id){ return (this.s.talents||[]).includes(id); },
+  gainExp(m,n){
+    if(!m) return; m.level=m.level||1; m.exp=(m.exp||0)+n;
+    while(m.exp >= m.level*10){ m.exp-=m.level*10; m.level++;
+      const k=m.kind==="martial"?"mil":"civ"; m[k]=grow(m[k],5);
+    }
+  },
+  breakthrough(id){
+    const s=this.s, m=s.ministers.find(x=>x.id===id); if(!m) return;
+    const order=["low","mid","high"], ti=order.indexOf(m.tier||"low");
+    if(ti>=2){ this.toast(`${m.name} 已臻化境，无可再破`); return; }
+    if((m.level||1)<5){ this.toast(`需 Lv5 方可突破（今 Lv${m.level||1}）`); return; }
+    const cost=8; if((s.shards||0)<cost){ this.toast(`碎片不足（需 ${cost}）`); return; }
+    s.shards-=cost; m.tier=order[ti+1]; m.level=1; m.exp=0;
+    const k=m.kind==="martial"?"mil":"civ"; m[k]=R.clamp(m[k]+12);
+    SFX.gong(); this.toast(`${m.name} 突破至 ${GACHA.tiers[m.tier].star}！${k==="mil"?"武略":"文才"} +12`);
+    this.logMsg(`${m.name} 经突破晋为${GACHA.tiers[m.tier].name}。`);
+    UI.renderPanel("court");
+  },
+  openTalents(){ UI.openModal(this.talentHTML()); },
+  talentHTML(){
+    const s=this.s;
+    let h=`<div class="talent-tree"><h2>帝王天赋 ✦ <span class="tp">天赋点 ${s.talentPts||0}</span></h2>`;
+    TALENT_BRANCHES.forEach(br=>{
+      h+=`<div class="tl-branch"><div class="tl-bh">${br}</div>`;
+      TALENTS.filter(t=>t.branch===br).forEach(t=>{
+        const on=this.hasTalent(t.id);
+        const lock=t.req&&!this.hasTalent(t.req);
+        const can=!on&&!lock&&(s.talentPts||0)>=t.cost;
+        h+=`<div class="tl-node ${on?"on":lock?"lock":""}">
+          <div class="tl-n"><b>${t.name}</b>${on?`<span class="tl-ok">✓已悟</span>`:`<button class="chip" ${can?"":"disabled"} onclick="Game.unlockTalent('${t.id}')">参悟 ✦${t.cost}</button>`}</div>
+          <div class="tl-d">${t.desc}${lock?`<span class="tl-req">（需先悟「${talentById(t.req).name}」）</span>`:""}</div></div>`;
+      });
+      h+=`</div>`;
+    });
+    h+=`<p class="panel-tip">※ 每年得 1 天赋点；亦可经达成大业获取。天赋永久生效。</p></div>`;
+    return h;
+  },
+  unlockTalent(id){
+    const s=this.s, t=talentById(id); if(!t||this.hasTalent(id)) return;
+    if(t.req&&!this.hasTalent(t.req)){ this.toast("尚需先参悟前置天赋"); return; }
+    if((s.talentPts||0)<t.cost){ this.toast("天赋点不足"); return; }
+    s.talentPts-=t.cost; (s.talents=s.talents||[]).push(id);
+    SFX.good(); this.toast(`参悟天赋·${t.name}！`); this.logMsg(`帝王参悟天赋「${t.name}」。`);
+    UI.openModal(this.talentHTML()); UI.renderEmperor();
+  },
+
   /* ---------- 大业系统（任务/成就/图鉴/称号）转接 ---------- */
   tally(key,n){ if(typeof QuestSys!=="undefined"&&this.s) QuestSys.tally(this.s,key,n); },
   questTab(t){ this.s._questTab=t; UI.renderPanel("quest"); },
@@ -299,20 +351,54 @@ const api = {
     this.toast(`得【${tg.name}${tg.star}】${w.name}！可佩于将相。`);
     UI.renderPanel("court"); return w;
   },
-  /* 装备武器（wid="" 卸下）。武器同时只能在一人身上；换装自动转移、增减对应属性 */
+  /* 兵器有效加成 = 基础 bonus + 强化等级×步长（强化存于 s.weaponLv） */
+  wpBonus(wid){ const w=weaponById(wid); if(!w) return 0; const lv=(this.s.weaponLv&&this.s.weaponLv[wid])||0; return w.bonus + lv*FORGE_STEP; },
+  /* 装备武器（wid="" 卸下）。武器同时只能在一人身上；换装自动转移、增减对应属性（含强化） */
   equipWeapon(mid,wid){
     const s=this.s, m=s.ministers.find(x=>x.id===mid); if(!m) return;
     // 先卸下 m 当前武器
-    if(m.weapon){ const om=weaponById(m.weapon); if(om) m[om.stat]=R.clamp(m[om.stat]-om.bonus); m.weapon=null; }
+    if(m.weapon){ const om=weaponById(m.weapon); if(om) m[om.stat]=R.clamp(m[om.stat]-this.wpBonus(m.weapon)); m.weapon=null; }
     if(!wid){ this.toast(`${m.name} 已卸兵刃`); UI.renderPanel("court"); return; }
     const w=weaponById(wid); if(!w) return;
     // 该武器若在他人身上，先夺下
     const holder=s.ministers.find(x=>x.weapon===wid);
-    if(holder){ const ow=weaponById(holder.weapon); if(ow) holder[ow.stat]=R.clamp(holder[ow.stat]-ow.bonus); holder.weapon=null; }
-    m.weapon=wid; m[w.stat]=R.clamp(m[w.stat]+w.bonus);
-    SFX.good(); this.toast(`${m.name} 佩 ${w.name}，${w.stat==="mil"?"武略":"文才"} +${w.bonus}`);
+    if(holder){ const ow=weaponById(holder.weapon); if(ow) holder[ow.stat]=R.clamp(holder[ow.stat]-this.wpBonus(holder.weapon)); holder.weapon=null; }
+    const b=this.wpBonus(wid);
+    m.weapon=wid; m[w.stat]=R.clamp(m[w.stat]+b);
+    SFX.good(); this.toast(`${m.name} 佩 ${w.name}，${w.stat==="mil"?"武略":"文才"} +${b}`);
     UI.renderPanel("court");
   },
+  /* 强化兵器：耗碎片提升加成等级。若正佩于某人身上，自动先减旧加成、升级、再补新加成 */
+  forgeWeapon(wid){
+    const s=this.s, w=weaponById(wid); if(!w) return;
+    if(!s.weaponLv) s.weaponLv={};
+    const lv=s.weaponLv[wid]||0;
+    if(lv>=FORGE_MAX){ this.toast(`${w.name} 已臻极境（+${lv*FORGE_STEP}）`); return; }
+    const cost=forgeCost(lv);
+    if((s.shards||0)<cost){ this.toast(`碎片不足（需 ${cost}）`); return; }
+    const holder=s.ministers.find(x=>x.weapon===wid);
+    if(holder) holder[w.stat]=R.clamp(holder[w.stat]-this.wpBonus(wid));   // 先减旧加成
+    s.shards-=cost; s.weaponLv[wid]=lv+1;
+    if(holder) holder[w.stat]=R.clamp(holder[w.stat]+this.wpBonus(wid));   // 补新加成
+    SFX.gong(); this.toast(`${w.name} 强化至 +${(lv+1)*FORGE_STEP}！${holder?`（${holder.name} ${w.stat==="mil"?"武略":"文才"}已增）`:""}`);
+    this.logMsg(`武库强化 ${w.name} 至 +${(lv+1)*FORGE_STEP}。`);
+    UI.renderPanel("court");
+  },
+  /* 阵容羁绊月结：满足组合即给被动加成（神兵在握含兵器谱套装效果）。返回生效羁绊 id 数组 */
+  applyBonds(){
+    const s=this.s, n=s.nation; const active=[];
+    BONDS.forEach(b=>{ if(!b.cond(s)) return; active.push(b.id);
+      switch(b.id){
+        case "b_wenwu": n.treasury+=2; n.military+=2; break;
+        case "b_zhong": n.people+=1; s.recruitPoints=(s.recruitPoints||0)+1; break;
+        case "b_elite": n.prestige+=2; break;
+        case "b_loyal": s.ministers.forEach(m=>m.ambition=R.clamp(m.ambition-2)); s.recruitPoints=(s.recruitPoints||0)+1; break;
+        case "b_arms":  n.military+=1; n.prestige+=1; break;
+      }
+    });
+    return active;
+  },
+  activeBonds(){ return BONDS.filter(b=>b.cond(this.s)); },
   grantVoucher(){ this.s.recruitVoucher=true; this.toast("获一次「半价招贤」良机！"); },
   // 碎片升级：消耗碎片提升一名官员主属性（武将提武略、文官提文才，边际递减）
   upgradeMinister(id){
@@ -359,6 +445,7 @@ const api = {
     }else{
       const base=s.emperor[tpl.woo]||40;                       // 吃她偏好的那一维
       gain=Math.round((7 + base/9 + s.emperor.charm/16) * (100-r.aff)/100) + R.i(1,4);  // 边际递减
+      if(this.hasTalent("t_charm")) gain=Math.round(gain*1.4); // 天赋·风流天子
     }
     r.aff=R.clamp(r.aff+gain);
     s.actedThisTurn=true; SFX.good();
@@ -475,6 +562,7 @@ const api = {
     let our=n.military*0.5;
     if(type==="emperor") our+=s.emperor.martial+8;
     else our+=(marshal?marshal.mil:25);
+    if(this.hasTalent("t_strategy")) our+=8;   // 天赋·运筹帷幄
     // 可操作战斗界面（多回合·战术博弈）：交由 BattleSys 接管，结束回调 resolveWar
     if(typeof BattleSys!=="undefined" && BattleSys.open){
       const leader = type==="emperor" ? `${s.emperor.name}（御驾亲征）` : (marshal?`${marshal.name}（武略${marshal.mil}）`:"偏将临阵");
@@ -498,7 +586,7 @@ const api = {
       s.flags.warWon=true;   // 战功——解锁木兰攻略
       this.tally("battlewin");
       title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
-      if(marshal)marshal.loyalty=R.clamp(marshal.loyalty+4);
+      if(marshal){ marshal.loyalty=R.clamp(marshal.loyalty+4); this.gainExp(marshal,10); }
       SFX.gong();
     }else{
       const loss=R.i(12,24),land=R.i(2,6);
@@ -581,14 +669,15 @@ const api = {
       if(m.post==="censor"){ gain("people",t/40); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-1)); }
       if(m.post==="marshal"){ gain("military",t/18); }
       if(m.post==="defense"){ gain("military",t/22); }
+      this.gainExp(m, 3);                       // 在职历练：积累经验升级
     });
     // 经济：税入 - 开支（开支随军队/后宫/百官增长 → 治国是收支平衡的艺术）
-    const income=n.people/18 + n.land/24;       // 基础税入偏薄，丰盈须靠丞相/户部治绩
+    const income=n.people/18 + n.land/24 + (this.hasTalent("t_finance")?2:0);   // 天赋·理财有道 +2
     const upkeep=n.military/11 + s.consorts.length*0.8 + s.ministers.filter(m=>m.post).length*1.3;
     n.treasury+=income-upkeep;                 // 净流可正可负，荒政则赤字
     n.food   += n.land/24 - n.people/24;        // 地养粮、民耗粮（人多则粮紧）
-    n.military-= n.military/28;                  // 兵员月损耗（老弱逃亡），无大将军则渐衰
-    n.people  -= n.people/120;                   // 民生自然消长（迁徙/老病），靠治绩维系
+    n.military-= n.military/28 * (this.hasTalent("t_drill")?0.5:1);   // 天赋·治军严明：损耗减半
+    n.people  -= n.people/120 * (this.hasTalent("t_benevol")?0.5:1);  // 天赋·仁泽万民：回落减半
     // 月度治理产出招贤点：民心越盛、贤才越愿来投（御史在职额外揽才）
     s.recruitPoints=(s.recruitPoints||0)+ 1 + (n.people>=60?1:0) + (s.ministers.some(m=>m.post==="censor")?1:0);
     // 拮据反噬
@@ -608,6 +697,7 @@ const api = {
       if(c.pregnant!=null){ c.pregnant++; if(c.pregnant>=10){ this.birth(c); c.pregnant=null; } }
     });
     this.applyConsortTraits();   // 入宫妃子的被动特质
+    this.applyBonds();           // 阵容羁绊（含兵器谱套装）被动加成
     // 帝王健康随龄消耗（按月）
     e.health-=R.i(0,1)+(e.age>=45?1:0)+(e.age>=60?1:0);
     if(typeof QuestSys!=="undefined"&&s.quest) QuestSys.refreshDaily(s);   // 月初轮替日课
@@ -618,6 +708,7 @@ const api = {
   yearlyTick(){
     const s=this.s, n=s.nation, e=s.emperor;
     e.age++; s.peakAge=Math.max(s.peakAge,e.age);
+    s.talentPts=(s.talentPts||0)+1; this.logMsg(`又是一年，帝王心智渐熟，得天赋点 +1。`);
     s.children.forEach(c=>{ c.age++; this.growChild(c); });
     s.ministers.forEach(m=>{ m.age++; if(m.age>72 && R.chance(20)){ this.retire(m); } });
     if(s.flags.pills>=5 && R.chance(s.flags.pills*4)){ this.emperorDies("poison"); return; }
@@ -716,7 +807,7 @@ const api = {
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
-  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
+  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; if(!d.weaponLv)d.weaponLv={}; if(!d.talents)d.talents=[]; if(d.talentPts==null)d.talentPts=0; this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
   saveBest(){ const s=this.s; const best=JSON.parse(localStorage.getItem(LS_BEST)||"null");
     const cur={dynasty:s.dynasty,years:s.nation.year,gen:s.gen,score:this.score()};
     if(!best||cur.score>best.score) localStorage.setItem(LS_BEST, JSON.stringify(cur)); }
