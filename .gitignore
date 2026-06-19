@@ -1,0 +1,4 @@
+# 系统 / 测试产物
+.DS_Store
+Thumbs.db
+*.log

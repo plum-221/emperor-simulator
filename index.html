@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2a0e0a">
+<meta name="description" content="朕即天下 —— 一款决策驱动的皇帝模拟器网页游戏，权衡民心、国库、军事、朝堂，体验数十种剧情走向与结局。">
+<title>朕即天下 · 皇帝模拟器</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%91%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 标题界面 ===== -->
+  <section id="screen-title" class="screen active">
+    <div class="title-bg"></div>
+    <div class="title-inner">
+      <div class="title-seal">朕</div>
+      <h1 class="game-title">朕<span>即</span>天下</h1>
+      <p class="game-sub">— 皇帝模拟器 · Emperor Simulator —</p>
+
+      <div class="setup">
+        <label class="field">
+          <span>国号</span>
+          <input id="inp-dynasty" maxlength="4" placeholder="大宁" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>名讳</span>
+          <input id="inp-name" maxlength="6" placeholder="赵无极" autocomplete="off">
+        </label>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary">登 基</button>
+      <div class="title-links">
+        <button id="btn-gallery" class="btn-link">结局图鉴</button>
+        <button id="btn-about" class="btn-link">玩法说明</button>
+      </div>
+      <p class="title-record" id="title-record"></p>
+    </div>
+  </section>
+
+  <!-- ===== 游戏界面 ===== -->
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <div class="reign-info">
+        <span id="reign-name" class="reign-name">大宁 · 永熙</span>
+        <span id="reign-meta" class="reign-meta">在位元年 · 春 · 圣寿20</span>
+      </div>
+      <button id="btn-mute" class="icon-btn" title="音效开关">🔊</button>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <main class="stage">
+      <div class="card" id="card">
+        <div class="card-portrait">
+          <div class="portrait-frame" id="portrait"></div>
+          <div class="speaker" id="speaker">丞相</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title" id="card-title"></h2>
+          <p class="card-text" id="card-text"></p>
+        </div>
+        <div class="choices" id="choices"></div>
+      </div>
+      <div class="hint-float" id="hint-float"></div>
+    </main>
+  </section>
+
+  <!-- ===== 结局界面 ===== -->
+  <section id="screen-end" class="screen">
+    <div class="end-inner">
+      <div class="end-seal" id="end-seal">崩</div>
+      <h2 class="end-temple" id="end-temple">庙号</h2>
+      <h1 class="end-title" id="end-title">结局</h1>
+      <p class="end-desc" id="end-desc"></p>
+      <div class="end-stats" id="end-stats"></div>
+      <div class="end-actions">
+        <button id="btn-replay" class="btn btn-primary">再启新朝</button>
+        <button id="btn-end-gallery" class="btn-link">查看结局图鉴</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 弹窗：图鉴 / 关于 ===== -->
+  <div id="modal" class="modal">
+    <div class="modal-box">
+      <button id="modal-close" class="modal-close">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/events.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
