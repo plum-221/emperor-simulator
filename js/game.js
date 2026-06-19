@@ -583,7 +583,7 @@ const api = {
       n.land=R.clamp(n.land+land); n.treasury=R.clamp(n.treasury+spoil);
       n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)); n.military=R.clamp(n.military-loss);
       n.people=R.clamp(n.people+4);
-      s.flags.warWon=true;   // 战功——解锁木兰攻略
+      s.flags.warWon=true;   // 战功——解锁巾帼·燕霜攻略
       this.tally("battlewin");
       title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
       if(marshal){ marshal.loyalty=R.clamp(marshal.loyalty+4); this.gainExp(marshal,10); }
