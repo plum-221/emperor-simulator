@@ -540,7 +540,106 @@ const EVENTS = [
   choices:[
    {text:"下罪己诏，自省其身",effects:{people:+8,prestige:-2}},
    {text:"大赦天下消灾",effects:{people:+6,treasury:-4}},
-   {text:"无稽之谈，照常理政",effects:{people:-4,politics:+1}}]}
+   {text:"无稽之谈，照常理政",effects:{people:-4,politics:+1}}]},
+
+ /* ——— 批2 新增事件：节庆 / 奇人 / 秘闻 / 祥瑞 / 灾异 / 江湖 / 民生 ——— */
+ {id:"ev_lantern",cat:"节庆",role:"eunuch",weight:2,phase:"eve",title:"上元灯会",cond:s=>s.nation.month===1,
+  text:"正月十五，京城张灯结彩，万人空巷。陛下可与民同乐，亦可借机微服察访民情。",
+  choices:[
+   {text:"登楼与民同乐，普天同庆",effects:{people:+8,prestige:+4,charm:+1}},
+   {text:"大办灯会，彰显国力",effects:{treasury:-10,people:+6,prestige:+6}},
+   {text:"一切从简，体恤民力",effects:{people:+4,treasury:+2}}]},
+
+ {id:"ev_autumn",cat:"节庆",role:"general",weight:2,phase:"noon",title:"中秋秋狝",cond:s=>s.nation.month>=8&&s.nation.month<=9,
+  text:"金风送爽，正宜行秋狝大典，校阅三军、震慑四夷。",
+  choices:[
+   {text:"亲率王师校猎演武",effects:{military:+6,prestige:+4,martial:+2,health:-1}},
+   {text:"犒赏三军，与将士同乐",effects:{treasury:-8,military:+8},do:G=>G.shiftAllLoyalty&&G.shiftAllLoyalty(+3)},
+   {text:"国事繁冗，免此一年",effects:{politics:+1,people:-2}}]},
+
+ {id:"ev_swordsman",cat:"江湖",role:"general",weight:2,title:"剑客投帖",cond:s=>s.nation.year>=1,
+  text:"一身负绝艺的江湖剑客求见，自荐入宫充任侍卫，然其来历不明、桀骜不驯。",
+  choices:[
+   {text:"试其身手，收为大内侍卫",effects:{military:+4,prestige:+2},do:G=>{if(G.s.emperor)G.s.emperor.health=R.clamp(G.s.emperor.health+2);}},
+   {text:"赐金礼送，敬而远之",effects:{treasury:-4,prestige:+1}},
+   {text:"疑为刺客，乱棒打出",effects:{people:-2,prestige:-1}}]},
+
+ {id:"ev_merchant",cat:"经济",role:"finance",weight:2,title:"豪商进献",cond:s=>s.nation.year>=1,
+  text:"江南首富沈氏求见，愿献白银百万助国用，只求一纸皇商特许、免税通商之恩。",
+  choices:[
+   {text:"准其所请，纳财通商",effects:{treasury:+18,people:-4,prestige:-2}},
+   {text:"纳财而不予特权",effects:{treasury:+10}},
+   {text:"重农抑商，叱退之",effects:{people:+4,treasury:-2,politics:+1}}]},
+
+ {id:"ev_monk",cat:"奇人",role:"eunuch",weight:1,title:"高僧论道",cond:s=>s.nation.year>=2,
+  text:"终南山高僧云游至京，请与陛下论佛理治道。听之或可明心见性。",
+  choices:[
+   {text:"虚心请教，参悟治道",effects:{int:+2,politics:+2,health:+2}},
+   {text:"大兴佛寺，广结善缘",effects:{treasury:-12,people:+8,prestige:+2}},
+   {text:"敬鬼神而远之",effects:{politics:+1}}]},
+
+ {id:"ev_painting",cat:"秘闻",role:"chancellor",weight:1,title:"前朝遗宝",cond:s=>s.nation.year>=2,
+  text:"内库清点，惊见前朝失传名画《千里江山图》，价值连城。然有臣谏言：玩物易丧志。",
+  choices:[
+   {text:"悬于御书房，朝夕揣摩",effects:{int:+2,charm:+1,prestige:+2}},
+   {text:"拍卖充盈国库",effects:{treasury:+14,prestige:-2}},
+   {text:"赏赐功臣，以彰恩宠",effects:{},do:G=>G.shiftAllLoyalty&&G.shiftAllLoyalty(+5)}]},
+
+ {id:"ev_drought",cat:"灾害",role:"finance",weight:2,title:"赤地千里",cond:s=>s.nation.year>=2,
+  text:"连月不雨，禾稼枯焦，井泉皆竭，灾民载道。",
+  choices:[
+   {text:"开仓赈济，掘井引渠",effects:{treasury:-12,food:-6,people:+12}},
+   {text:"祈雨斋戒，减膳撤乐",effects:{people:+6,prestige:+2,health:-1}},
+   {text:"催征如故，不恤民艰",effects:{people:-14,treasury:+6}}]},
+
+ {id:"ev_qilin",cat:"祥瑞",role:"eunuch",weight:1,title:"麒麟现世",cond:s=>s.nation.prestige>=55,
+  text:"地方奏报：祥瑞麒麟现于郊野，万民称颂，皆言陛下圣德感天！",
+  choices:[
+   {text:"昭告天下，大赦四海",effects:{people:+10,prestige:+8,treasury:-6}},
+   {text:"勒石纪瑞，载入史册",effects:{prestige:+6,int:+1}},
+   {text:"恐为臣下谄媚，淡然处之",effects:{politics:+2,people:+2}}]},
+
+ {id:"ev_orphan",cat:"民生",role:"censor",weight:2,title:"街头弃儿",cond:s=>s.nation.year>=1,
+  text:"微服途中见路有冻饿弃儿，啼哭无依，路人侧目。",
+  choices:[
+   {text:"敕建慈幼局，收养孤贫",effects:{treasury:-8,people:+10,prestige:+2}},
+   {text:"携回宫中亲自抚养",effects:{people:+5,charm:+1}},
+   {text:"叹息而过，无可奈何",effects:{people:-4,health:-1}}]},
+
+ {id:"ev_poet",cat:"奇人",role:"chancellor",weight:1,title:"狂士题诗",cond:s=>s.nation.year>=1,
+  text:"一落第狂生于酒肆题反诗讥讽朝政，传遍京城，有司请旨严办。",
+  choices:[
+   {text:"不以言罪人，反召其入仕",effects:{people:+8,prestige:+4,int:+1}},
+   {text:"一笑置之，焚诗了事",effects:{people:+4}},
+   {text:"以大不敬论罪，下狱问斩",effects:{people:-10,prestige:-2},do:G=>G.shiftAllLoyalty&&G.shiftAllLoyalty(-3)}]},
+
+ {id:"ev_horse",cat:"外交",role:"envoy",weight:2,title:"西域贡马",cond:s=>s.nation.year>=2,
+  text:"西域使团进献汗血宝马千匹，神骏非凡，正可充实军备。",
+  choices:[
+   {text:"厚赐使团，纳为军马",effects:{treasury:-8,military:+10,prestige:+2}},
+   {text:"挑选良驹，余者市易",effects:{military:+5,treasury:+4}},
+   {text:"婉拒以示不慕奇货",effects:{prestige:+4,people:+2}}]},
+
+ {id:"ev_flood2",cat:"灾害",role:"finance",weight:2,title:"江南水患",cond:s=>s.nation.year>=2,
+  text:"梅雨成灾，江南圩田尽没，漕运中断，米价腾贵。",
+  choices:[
+   {text:"截留漕粮就地赈济",effects:{food:-8,people:+12,treasury:-4}},
+   {text:"遣能臣督修水利",effects:{treasury:-12,people:+8,food:+4}},
+   {text:"听之任之，灾后再议",effects:{people:-12,food:-4}}]},
+
+ {id:"ev_assassin",cat:"危机",role:"eunuch",weight:1,title:"夜半行刺",cond:s=>s.nation.year>=3&&s.nation.prestige<50,
+  text:"深夜，黑衣刺客潜入寝宫，刀光直逼御榻！侍卫闻声赶至，缠斗正酣。",
+  choices:[
+   {text:"临危不乱，亲手格杀",cond:s=>s.emperor.martial>=50,effects:{martial:+3,prestige:+8,health:-4}},
+   {text:"急呼侍卫，仓皇避走",effects:{prestige:-4,health:-2}},
+   {text:"生擒之，深查幕后主使",effects:{health:-2},do:G=>G.shiftAllLoyalty&&G.shiftAllLoyalty(-2)}]},
+
+ {id:"ev_eclipse",cat:"祥瑞",role:"eunuch",weight:1,title:"日食示警",cond:s=>s.nation.year>=2,
+  text:"白昼天狗食日，京师晦暗，百姓惊惶击鼓救日。钦天监奏请修省。",
+  choices:[
+   {text:"避正殿、减常膳以应天谴",effects:{people:+6,prestige:+2,health:-1}},
+   {text:"颁修省诏，求直言极谏",effects:{people:+4,politics:+2},do:G=>G.shiftAllLoyalty&&G.shiftAllLoyalty(+2)},
+   {text:"晓谕百姓此乃天象常理",effects:{int:+2,people:-2}}]}
 ];
 
 /* ===================================================================
@@ -675,3 +774,60 @@ const BIG_EVENTS = [
      if(R.chance(35)){G.showCard({title:"天怒示警",role:"eunuch",text:"翌日京师地动山摇，宫室倾颓、火光冲天，举国震恐，皆言天谴！",choices:[{text:"惶恐补救",do:g=>g.applyEffects({treasury:-10,people:+4})}]});}}}]}
 ];
 EVENTS.push(...BIG_EVENTS);
+
+/* ===================================================================
+   微服探险（P10 批2·roguelike）——「微服私访」行动触发一连串随机遭遇。
+   每次随机抽 3 桩，逐桩抉择、累积得失，归来结算。
+   =================================================================== */
+const INSPECT_ENCOUNTERS = [
+ {title:"市井赌坊",role:"peasant",text:"行至闹市，见一赌坊人声鼎沸，有泼皮强拉良民豪赌、放印子钱盘剥。",
+  choices:[
+   {text:"亮出身份，查封赌坊",eff:{people:+6,treasury:+4}},
+   {text:"暗记其名，回宫严办",eff:{people:+4,politics:+1}},
+   {text:"佯装赌客，小试身手",eff:{treasury:+3,health:-1}}]},
+ {title:"茶肆听政",role:"peasant",text:"茶肆中，几位老者正高谈阔论，臧否时政、针砭朝廷得失，浑然不知天子在侧。",
+  choices:[
+   {text:"虚心倾听，引以为鉴",eff:{politics:+2,people:+3}},
+   {text:"上前与之辩驳一番",eff:{int:+2,charm:+1}},
+   {text:"赏茶钱，含笑而去",eff:{people:+4,charm:+1}}]},
+ {title:"义士相救",role:"general",text:"忽遇恶霸纵马伤人，一布衣少年挺身格斗、护住老幼，身手不凡。",
+  choices:[
+   {text:"赞其义勇，许以从军",eff:{military:+4,prestige:+2}},
+   {text:"赐金疗伤，记其姓名",eff:{treasury:-3,people:+4}},
+   {text:"暗中护持，不动声色",eff:{prestige:+2}}]},
+ {title:"荒村求医",role:"censor",text:"行经荒村，见一家老小染疫卧床，无钱延医，奄奄一息。",
+  choices:[
+   {text:"解囊赐药，遣御医往治",eff:{treasury:-5,people:+8,charm:+1}},
+   {text:"敕令地方设义诊局",eff:{treasury:-8,people:+10}},
+   {text:"心有不忍，留银而去",eff:{treasury:-3,people:+4}}]},
+ {title:"古寺奇遇",role:"eunuch",text:"破败古寺中，一老僧似早知圣驾将至，奉上一卷无字天书，言『有缘自见』。",
+  choices:[
+   {text:"虚心参悟，若有所得",eff:{int:+3,politics:+1}},
+   {text:"重修古寺，以谢机缘",eff:{treasury:-8,people:+6,prestige:+2}},
+   {text:"一笑收下，权当趣谈",eff:{charm:+1}}]},
+ {title:"才女卖画",role:"chancellor",text:"桥头一清丽女子卖画自给，笔意清绝，题诗孤高，引得文人围观叹赏。",
+  choices:[
+   {text:"高价购其全画",eff:{treasury:-4,charm:+1,int:+1}},
+   {text:"题字相赠，传为佳话",eff:{prestige:+3,charm:+1}},
+   {text:"叹其遭际，赐银周济",eff:{treasury:-3,people:+3}}]},
+ {title:"漕工罢役",role:"finance",text:"运河码头，漕工因克扣工钱聚众罢役，监工与之对峙，眼看激成民变。",
+  choices:[
+   {text:"当场补发工钱，严惩贪吏",eff:{treasury:-6,people:+8}},
+   {text:"好言安抚，许以整改",eff:{people:+4,politics:+1}},
+   {text:"调兵弹压，强令复工",eff:{people:-8,military:-2}}]},
+ {title:"猎户献宝",role:"general",text:"深山猎户献上一张罕见白虎皮，并诉说山中虎患、村民惶惶。",
+  choices:[
+   {text:"纳其献，遣兵除虎患",eff:{military:-3,people:+8,prestige:+2}},
+   {text:"赏猎户，命其引兵围猎",eff:{treasury:-3,martial:+2,people:+4}},
+   {text:"婉拒虎皮，只解民忧",eff:{people:+6}}]},
+ {title:"孩童遮道",role:"peasant",text:"一群顽童嬉戏遮道，认不出天颜，反围着你索要糖人、拉你同玩。",
+  choices:[
+   {text:"童心未泯，与之同乐",eff:{health:+3,charm:+2,people:+2}},
+   {text:"买糖分赠，皆大欢喜",eff:{treasury:-2,people:+4,charm:+1}},
+   {text:"威严不可犯，命人驱散",eff:{people:-3}}]},
+ {title:"冤民拦驾",role:"censor",text:"忽有老妪拦路喊冤，状告县令草菅人命、屈杀其子，血书在手、声泪俱下。",
+  choices:[
+   {text:"亲准其状，钦差彻查",eff:{people:+8,prestige:+2},note:"严"},
+   {text:"暗访属实再办，免打草惊蛇",eff:{people:+4,politics:+2}},
+   {text:"民妇刁状，斥退了事",eff:{people:-10,prestige:-2}}]}
+];

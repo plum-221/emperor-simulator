@@ -170,7 +170,9 @@ const api = {
     visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶（仅夜）",phases:["eve"],select:"harem"},
     rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康（夜）",phases:["eve"],run(s){
       s.emperor.health+=R.i(3,5);
-      return "静心休养，龙体渐安。";}}
+      return "静心休养，龙体渐安。";}},
+    inspect:{name:"微服私访",icon:ICONS.visit,hint:"微服出宫，奇遇连连（午/夜）",phases:["noon","eve"],run(s){
+      G.startInspection(); return "";}}
   },
 
   doAction(type){
@@ -443,6 +445,25 @@ const api = {
   marryPrincess(){
     const s=this.s; const p=s.children.find(c=>c.gender==="女"&&c.age>=14&&!c.married);
     if(p){ p.married=true; this.toast(`公主 ${p.name} 远嫁番邦，结两国之好。`);}
+  },
+
+  /* ---------- 微服探险（roguelike·一次抽 3 桩随机遭遇连环抉择）---------- */
+  startInspection(){
+    this._advQueue = R.shuffle(INSPECT_ENCOUNTERS).slice(0,3);
+    this._advStep = 0; this.tally("inspect");
+    this.nextEncounter();
+  },
+  nextEncounter(){
+    if(!this._advQueue || this._advStep>=this._advQueue.length){
+      this._advQueue=null;
+      this.showCard({title:"微服回銮",role:"eunuch",
+        text:"一番微服私访，民间疾苦、世态炎凉，尽入圣心。摆驾回宫，感念良多。",
+        choices:[{text:"摆驾回宫",do:()=>{}}]});
+      return;
+    }
+    const enc=this._advQueue[this._advStep++];
+    this.showCard({title:"微服 · "+enc.title, role:enc.role||"peasant", text:enc.text,
+      choices:enc.choices.map(ch=>({text:ch.text, effects:ch.eff, do:(G2)=>G2.nextEncounter()}))});
   },
 
   /* ---------- 战争 ---------- */
