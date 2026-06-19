@@ -19,7 +19,7 @@ function faceFor(role){
   return rnd(M.ministers);
 }
 function rnd(a){ return a&&a.length ? a[Math.floor(Math.random()*a.length)].file : ""; }
-function img(src,cls){ return src?`<img class="${cls}" src="${src}" loading="lazy" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} noface',textContent:'？'}))">`
+function img(src,cls){ return src?`<img class="${cls} imgload" src="${src}" loading="lazy" alt="" onload="this.classList.add('imgok')" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} noface',textContent:'？'}))">`
   :`<div class="${cls} noface">？</div>`; }
 
 /* ---------- HUD ---------- */

@@ -466,6 +466,16 @@ b{color:var(--gold-br);font-weight:600;}
 .menu-list .btn{width:100%;font-size:15px;padding:11px;border-radius:11px;}
 .btn.ghost{background:transparent;border:1px solid var(--gold-dk);color:var(--gold-dk);}
 
+/* ============ 立绘加载：骨架屏微光 + 加载完淡入 ============ */
+.imgload{
+  background-image:linear-gradient(110deg,#241810 28%,#3d2c1a 45%,#241810 62%);
+  background-size:240% 100%;background-repeat:no-repeat;
+  animation:imgShimmer 1.15s ease-in-out infinite;
+}
+.imgload.imgok{animation:imgIn .42s ease-out;}   /* 加载完成：停闪烁并淡入 */
+@keyframes imgShimmer{0%{background-position:145% 0}100%{background-position:-45% 0}}
+@keyframes imgIn{from{opacity:.2}to{opacity:1}}
+
 /* ============ 响应式 ============ */
 @media (max-width:760px){
   .layout{flex-direction:column;gap:10px;padding:10px;overflow-y:auto;}
