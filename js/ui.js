@@ -25,7 +25,8 @@ function img(src,cls){ return src?`<img class="${cls}" src="${src}" loading="laz
 /* ---------- HUD ---------- */
 function renderHUD(){
   const s=Game.s,n=s.nation;
-  $("hud-title").textContent=`${s.dynasty} · ${s.reign}`;
+  const tt=(typeof QuestSys!=="undefined")?QuestSys.equippedTitle():"";
+  $("hud-title").textContent=`${tt?tt+"·":""}${s.dynasty} · ${s.reign}`;
   const ph=PHASES[n.phase||0]||PHASES[0];
   $("hud-date").textContent=`${n.year}年 ${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.icon}${ph.name}`;
   $("hud-nation").innerHTML=Object.keys(NATION_STATS).map(k=>{
@@ -82,10 +83,14 @@ function showMonth(){
   const s=Game.s,n=s.nation;
   const posts=s.ministers.filter(m=>m.post).length;
   const ph=PHASES[n.phase||0]||PHASES[0];
+  let questLine="";
+  if(typeof QuestSys!=="undefined"&&s.quest){ const q=QuestSys.curMain(s);
+    questLine=q?`<p class="month-quest">📜 当前大业：<b>${q.name}</b> —— ${q.desc}</p>`:`<p class="month-quest">📜 中兴大业已成，名垂青史。</p>`; }
   $("event-area").innerHTML=`
     <div class="month-card">
       <h3>${ph.icon} ${n.year}年${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.name}</h3>
       <p class="month-sub">${ph.hint}。陛下可择一事而行，或召见群臣、临幸后宫，再「下一时段」。</p>
+      ${questLine}
       <div class="month-grid">
         <div>在职大臣 <b>${posts}/${POSITIONS.length}</b></div>
         <div>后宫嫔妃 <b>${s.consorts.length}</b></div>
@@ -117,7 +122,7 @@ function renderActions(){
 let panelOpts={};
 function openPanel(name,opts){ panelOpts=opts||{}; $("panel-mask").classList.add("open"); renderPanel(name); }
 function closePanel(){ $("panel-mask").classList.remove("open"); panelOpts={}; }
-const PANEL_TITLE={map:"天下 · 列国舆图",court:"朝堂 · 满朝文武",harem:"后宫 · 嫔妃",heir:"皇嗣 · 子女",army:"军务",log:"史册"};
+const PANEL_TITLE={map:"天下 · 列国舆图",court:"朝堂 · 满朝文武",harem:"后宫 · 嫔妃",heir:"皇嗣 · 子女",army:"军务",log:"史册",quest:"大业 · 任务·成就·图鉴"};
 
 function bar(v,color){ return `<span class="mini-bar"><i style="width:${Math.round(v)}%;background:${color}"></i></span>`; }
 
@@ -126,6 +131,9 @@ function renderPanel(name){
   const s=Game.s; let h="";
   if(name==="map"){
     h+=MapSys.renderBody(s);
+  }
+  else if(name==="quest"){
+    h+=(typeof QuestSys!=="undefined")?QuestSys.renderBody(s):`<p class="panel-tip">大业系统未加载</p>`;
   }
   else if(name==="court"){
     const selecting=panelOpts.selectAction==="audience";

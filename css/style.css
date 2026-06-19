@@ -377,6 +377,36 @@ b{color:var(--gold-br);font-weight:600;}
   background:repeating-linear-gradient(135deg,#2a1d12,#2a1d12 6px,#241810 6px,#241810 12px);}
 .lock-cond{font-size:11.5px;color:#b89a6a;}
 
+/* ============ 大业系统（P10 批1：任务/成就/图鉴/称号） ============ */
+.month-quest{margin:8px 0 0;padding:7px 10px;border-left:3px solid var(--gold);
+  background:rgba(217,182,95,.08);font-size:13px;color:var(--paper);border-radius:0 6px 6px 0;}
+.q-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.q-tab{flex:1;padding:8px 4px;font-family:var(--serif);font-size:14px;cursor:pointer;color:var(--paper-2);
+  background:rgba(0,0,0,.25);border:1px solid var(--gold-dk);border-radius:8px;}
+.q-tab.on{background:linear-gradient(180deg,var(--gold),var(--gold-dk));color:var(--ink);font-weight:600;}
+.q-card{border:1px solid var(--gold-dk);border-radius:10px;padding:10px 12px;margin-bottom:9px;
+  background:linear-gradient(180deg,rgba(60,38,20,.5),rgba(36,22,12,.6));}
+.q-card.cur{border-color:var(--gold-br);box-shadow:0 0 0 1px rgba(217,182,95,.25);}
+.q-card.done{opacity:.72;}
+.q-card.locked{opacity:.55;filter:grayscale(.4);}
+.q-h{display:flex;justify-content:space-between;align-items:center;}
+.q-h b{color:var(--gold-br);font-size:15px;}
+.q-step{font-size:12px;color:var(--paper-2);}
+.q-ok{font-size:12px;color:#6cc07f;}
+.q-title{font-size:11px;color:#e0b24a;border:1px solid #e0b24a;border-radius:7px;padding:1px 6px;}
+.q-desc{font-size:12.5px;color:var(--paper);opacity:.9;margin:5px 0;line-height:1.5;}
+.q-rw{font-size:11.5px;color:#d9b65f;}
+.q-pbar{margin:5px 0;}
+.q-done-list{font-size:11px;color:#8a7a5a;margin:2px 0 4px;line-height:1.8;}
+.q-done-list span{margin-right:8px;}
+.codex-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px;}
+.cdx{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--paper-2);}
+.cdx img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:7px;border:1px solid var(--gold-dk);}
+.cdx.locked{opacity:.6;}
+.cdx-silh{width:100%;aspect-ratio:3/4;display:grid;place-items:center;font-size:22px;color:#5a4a3a;border-radius:7px;
+  background:repeating-linear-gradient(135deg,#2a1d12,#2a1d12 6px,#241810 6px,#241810 12px);border:1px solid #4a3a2a;}
+.title-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+
 /* ============ 响应式 ============ */
 @media (max-width:760px){
   .layout{flex-direction:column;gap:10px;padding:10px;overflow-y:auto;}

@@ -48,6 +48,7 @@ const ICONS = {
   army:_i('<path d="M12 3l7 2.2v5.8c0 4.8-3.4 7.8-7 9.7-3.6-1.9-7-4.9-7-9.7V5.2z"/><path d="M12 8v6"/><path d="M9 11h6"/>'),
   log:_i('<path d="M4 6h16"/><path d="M4 18h16"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M9.5 10h5"/><path d="M9.5 14h5"/>'),
   map:_i('<path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14"/><path d="M15 6v14"/>'),
+  quest:_i('<path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/><path d="M15 3v3h3"/>'),
   next:_i('<path d="M6 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/>'),
   // 新增：招贤 / 罢免
   recruit:_i('<path d="M9 11a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M3.5 19c0-3.2 2.5-5 5.5-5"/><path d="M16 8v6"/><path d="M13 11h6"/>'),

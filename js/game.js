@@ -70,6 +70,7 @@ const api = {
     // 默认任命
     this.autoAppoint();
     MapSys.initState(this.s);
+    if(typeof QuestSys!=="undefined") QuestSys.initState(this.s);
     this.logMsg(`${this.s.dynasty}立国，${this.s.reign}帝即位，时年${this.s.emperor.age}岁。`);
     UI.toGame();
     SFX.gong();
@@ -128,6 +129,7 @@ const api = {
     if(loyR) this.shiftAllLoyalty(loyR);
     if(favR) this.allConsortFavor(favR);
     if(ev.once) s.flags["done_"+ev.id]=true;
+    if(ev.id && typeof QuestSys!=="undefined") QuestSys.see(s,"events",ev.id);
     s.pendingEvent=null;
     this.logMsg(`【${typeof ev.title==="function"?ev.title(s):ev.title}】${opt.text}`);
     if(opt.do) opt.do(this);          // 可能再次 showCard（如战报）
@@ -177,6 +179,7 @@ const api = {
     if(a.phases && !a.phases.includes(PHASES[s.nation.phase||0].key)){ this.toast(`此事宜在${a.phases.map(k=>PHASES.find(p=>p.key===k).name).join("/")}行`); return; }
     if(a.select){ UI.openPanel(a.select,{selectAction:type}); return; }
     const msg=a.run(s); s.actedThisTurn=true;
+    this.tally(type);
     this.clampAll(); SFX.good(); this.toast(msg);
     this.renderTurn();
   },
@@ -185,7 +188,7 @@ const api = {
     const s=this.s; const c=s.consorts.find(x=>x.id===id); if(!c)return;
     if(s.actedThisTurn) { this.toast("此时段已行一事"); return; }
     c.favor=R.clamp(c.favor+R.i(6,12)); c.bond=R.clamp(c.bond+R.i(3,7));
-    s.actedThisTurn=true;
+    s.actedThisTurn=true; this.tally("visit");
     // 受孕：与健康、宠爱相关
     if(c.pregnant==null && R.chance(28+s.emperor.health/8)){ c.pregnant=0; this.toast(`临幸 ${c.name}，${c.name}承欢…（似有喜兆）`);}
     else this.toast(`临幸 ${c.name}，情分渐深。`);
@@ -265,13 +268,17 @@ const api = {
     }
     const m=(pick.kind==="martial"?buildGenerals:buildMinisters)([pick.src],1,tierKey)[0];
     // 数值已由 tier 区间(TIER_STATS)决定，不再额外叠加 statBonus
-    s.ministers.push(m); SFX.gong();
+    s.ministers.push(m); SFX.gong(); this.tally("recruit");
     this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.name}（文${m.civ}·武${m.mil}）。`);
     UI.showRecruit(m);
     UI.renderPanel("court"); this.renderTurn();
     return m;
   },
   earnPoints(n,reason){ const s=this.s; if(n<=0)return; s.recruitPoints=(s.recruitPoints||0)+n; if(reason)this.logMsg(`${reason}，招贤点 +${n}。`); },
+  /* ---------- 大业系统（任务/成就/图鉴/称号）转接 ---------- */
+  tally(key,n){ if(typeof QuestSys!=="undefined"&&this.s) QuestSys.tally(this.s,key,n); },
+  questTab(t){ this.s._questTab=t; UI.renderPanel("quest"); },
+  equipTitle(t){ if(typeof QuestSys!=="undefined") QuestSys.setTitle(t); UI.renderPanel("quest"); UI.renderHUD(); },
   /* 武库抽卡：消耗招贤点抽一件武器，已有则化碎片 */
   weaponDraw(){
     const s=this.s; const cost=GACHA.cost;
@@ -285,6 +292,7 @@ const api = {
       UI.renderPanel("court"); return {dupe:true,wid:w.id};
     }
     s.weapons.push(w.id); SFX.gong();
+    if(typeof QuestSys!=="undefined") QuestSys.see(s,"weapons",w.id);
     this.logMsg(`武库铸成【${tg.name}${tg.star}】${w.name}（${w.stat==="mil"?"武略":"文才"} +${w.bonus}）。`);
     this.toast(`得【${tg.name}${tg.star}】${w.name}！可佩于将相。`);
     UI.renderPanel("court"); return w;
@@ -352,6 +360,7 @@ const api = {
     }
     r.aff=R.clamp(r.aff+gain);
     s.actedThisTurn=true; SFX.good();
+    this.tally("woo"); if(typeof QuestSys!=="undefined") QuestSys.see(s,"consorts",cid);
     this.toast(`与 ${tpl.name} ${kind==="gift"?"赠礼":"相会"}，心动 +${gain}（${r.aff}/100）`);
     // 心动跨阈值 → 触发未演的剧情幕
     const idx=tpl.scenes.findIndex((sc,i)=>!r.seen.includes(i) && r.aff>=sc.at);
@@ -375,6 +384,7 @@ const api = {
     if(s.consorts.some(c=>c.tplId===cid)) return;
     const c=makeConsort(tpl); s.consorts.push(c);
     this.romanceOf(cid).done=true;
+    if(typeof QuestSys!=="undefined") QuestSys.see(s,"consorts",cid);
     SFX.gong();
     this.logMsg(`${tpl.name} 入宫，封为${RANKS[c.rank]}（特质·${c.traitName}）。`);
     this.toast(`${tpl.name} 倾心相许，纳为${RANKS[c.rank]}！`);
@@ -465,6 +475,7 @@ const api = {
       n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)); n.military=R.clamp(n.military-loss);
       n.people=R.clamp(n.people+4);
       s.flags.warWon=true;   // 战功——解锁木兰攻略
+      this.tally("battlewin");
       title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
       if(marshal)marshal.loyalty=R.clamp(marshal.loyalty+4);
       SFX.gong();
@@ -504,6 +515,7 @@ const api = {
     const s=this.s, n=s.nation; if(s.over) return;
     if(s.pendingEvent){ this.toast("请先处理朝政奏折"); return; }
     if(!this._ff) SFX.deal();
+    this.tally("turn");
     n.phase++;
     if(n.phase>2){                       // 一天过完
       n.phase=0; n.day++;
@@ -577,6 +589,7 @@ const api = {
     this.applyConsortTraits();   // 入宫妃子的被动特质
     // 帝王健康随龄消耗（按月）
     e.health-=R.i(0,1)+(e.age>=45?1:0)+(e.age>=60?1:0);
+    if(typeof QuestSys!=="undefined"&&s.quest) QuestSys.refreshDaily(s);   // 月初轮替日课
     this.clampNation();
   },
 
@@ -618,6 +631,7 @@ const api = {
     const s=this.s, e=s.emperor;
     // 千古一帝（自然死且功业卓著）
     if((cause==="age") && e.age>=55 && this.avgNation()>=62 && s.nation.prestige>=70){
+      s._sageWin=true; if(typeof QuestSys!=="undefined"&&s.quest) QuestSys.check(s);
       this.gameOver("sage"); return;
     }
     // 寻找继承人：太子优先，否则最年长皇子
@@ -677,11 +691,11 @@ const api = {
 
   logMsg(t){ const s=this.s; s.log.unshift(`${s.nation.year}年${s.nation.month}月 · ${t}`); if(s.log.length>60)s.log.pop(); },
 
-  renderTurn(){ if(this._ff){ this.save(); return; } UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); this.save(); },
+  renderTurn(){ if(this._ff){ this.save(); return; } if(typeof QuestSys!=="undefined"&&this.s.quest) QuestSys.check(this.s); UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); this.save(); },
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
-  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; this.s=d; MapSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
+  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
   saveBest(){ const s=this.s; const best=JSON.parse(localStorage.getItem(LS_BEST)||"null");
     const cur={dynasty:s.dynasty,years:s.nation.year,gen:s.gen,score:this.score()};
     if(!best||cur.score>best.score) localStorage.setItem(LS_BEST, JSON.stringify(cur)); }
