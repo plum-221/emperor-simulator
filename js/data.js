@@ -47,7 +47,11 @@ const ICONS = {
   heir:_i('<path d="M12 5.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8"/><path d="M8.5 19v-4a3.5 3.5 0 0 1 7 0v4"/><path d="M9.5 19h5"/>'),
   army:_i('<path d="M12 3l7 2.2v5.8c0 4.8-3.4 7.8-7 9.7-3.6-1.9-7-4.9-7-9.7V5.2z"/><path d="M12 8v6"/><path d="M9 11h6"/>'),
   log:_i('<path d="M4 6h16"/><path d="M4 18h16"/><path d="M6.5 6v12"/><path d="M17.5 6v12"/><path d="M9.5 10h5"/><path d="M9.5 14h5"/>'),
-  next:_i('<path d="M6 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/>')
+  map:_i('<path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14"/><path d="M15 6v14"/>'),
+  next:_i('<path d="M6 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/>'),
+  // 新增：招贤 / 罢免
+  recruit:_i('<path d="M9 11a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M3.5 19c0-3.2 2.5-5 5.5-5"/><path d="M16 8v6"/><path d="M13 11h6"/>'),
+  dismiss:_i('<path d="M9 11a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M3.5 19c0-3.2 2.5-5 5.5-5"/><path d="M15 9l5 5"/><path d="M20 9l-5 5"/>')
 };
 
 /* 官职：用哪种才（civ文/mil武）、主要增益维度 */
@@ -70,6 +74,19 @@ const PERS_KEYS = Object.keys(PERSONALITIES);
 /* 后宫位分（由低到高） */
 const RANKS = ["答应","常在","贵人","嫔","妃","贵妃","皇贵妃","皇后"];
 
+/* 一天的三个时段（按天推进：早→中→晚） */
+const PHASES = [
+  {key:"morn",name:"清晨",icon:"🌅",hint:"晨光熹微，新的一日"},
+  {key:"noon",name:"正午",icon:"☀️",hint:"日上中天，正宜理政"},
+  {key:"eve", name:"入夜",icon:"🌙",hint:"华灯初上，倦鸟归巢"}
+];
+const MONTH_DAYS = 30;   // 每月天数（统一 30，便于结算）
+
+/* 招贤馆：每次求贤的花费（抽卡式招募） */
+const RECRUIT_COST = 12;
+/* 选秀：每次纳新嫔妃的花费 */
+const SELECT_COST = 10;
+
 /* 敌国/番邦 */
 const ENEMIES = ["北狄","西羌","东瀛","南诏","匈奴","突厥","契丹","吐蕃"];
 
@@ -81,6 +98,25 @@ const R = {
   chance:p=>Math.random()*100<p,
   clamp:(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v))
 };
+
+/* 孩子成长阶段（按年龄）。key 同时用作成长立绘的文件名后缀 */
+const CHILD_STAGES = [
+  {key:"baby", name:"襁褓",  max:2},
+  {key:"child",name:"孩童",  max:6},
+  {key:"teen", name:"少年",  max:12},
+  {key:"youth",name:"弱冠",  max:99}
+];
+function childStage(age){ return CHILD_STAGES.find(s=>age<=s.max) || CHILD_STAGES[CHILD_STAGES.length-1]; }
+
+/* 帝王按年龄段立绘（key 即文件名）。少年≤17 / 青年≤30 / 中年≤50 / 老年>50 */
+const EMPEROR_BANDS = [
+  {key:"teen",  max:17},
+  {key:"young", max:30},
+  {key:"middle",max:50},
+  {key:"old",   max:999}
+];
+function emperorBand(age){ return (EMPEROR_BANDS.find(b=>age<=b.max) || EMPEROR_BANDS[EMPEROR_BANDS.length-1]).key; }
+function emperorFace(age){ return "assets/portraits/emperor/"+emperorBand(age)+".png"; }
 
 /* 子嗣取名用字 */
 const GIVEN_M = "承乾景琰昭珩瑞渊弘睿晟煜钰熙泽宸曜钧澈".split("");
@@ -301,3 +337,136 @@ const EVENTS = [
    {text:"大赦天下消灾",effects:{people:+6,treasury:-4}},
    {text:"无稽之谈，照常理政",effects:{people:-4,politics:+1}}]}
 ];
+
+/* ===================================================================
+   大事件 BIG_EVENTS —— 多段连锁、撼动国运。
+   weight 低、有 cond 触发；big:true 触发特殊横幅样式。
+   连锁靠 choice.do 里 G.showCard(下一段卡) 实现（与战报同机制）。
+   =================================================================== */
+const BIG_EVENTS = [
+ /* —— 太师逼宫（权臣政变·三选枝，可亡国/可翻盘）—— */
+ {id:"big_coup",cat:"大事件",role:"chancellor",weight:1,big:true,
+  cond:s=>s.nation.year>=2 && s.ministers.some(m=>m.post==="chancellor"&&m.ambition>52),
+  title:"太师逼宫",
+  text:s=>{const c=s.ministers.find(m=>m.post==="chancellor");return `惊变！丞相${c?c.name:"权臣"}久蓄异志，今率百官伏阙，甲士环立殿外，逼陛下"垂拱而治、还政于相"——刀光剑影，社稷悬于一线！`;},
+  choices:[
+   {text:"调禁军强硬镇压",cond:s=>s.nation.military>=30,do:G=>{
+     const win=R.chance(42+G.s.emperor.martial/4);
+     const c=G.s.ministers.find(m=>m.post==="chancellor");
+     if(win){
+       G.applyEffects({prestige:+12,people:-4,military:-8});
+       if(c){const i=G.s.ministers.indexOf(c); G.s.ministers.splice(i,1); if(c.portrait&&!G.s.blacklist.includes(c.portrait))G.s.blacklist.push(c.portrait);}
+       G.showCard({title:"逼宫平定",role:"general",text:"禁军及时入卫，乱党猝不及防，太师党羽尽数伏诛，朝局重归一统。",
+         choices:[{text:"论功行赏，整肃朝纲",do:g=>g.shiftAllLoyalty(+4)}]});
+     }else{
+       G.applyEffects({military:-15,prestige:-6});
+       G.showCard({title:"兵变失控",role:"general",text:"不料禁军竟被太师收买反水，挟百官围紧宫城，喊杀震天……",
+         choices:[
+          {text:"血战突围，召勤王军",cond:s=>s.emperor.martial>=58,do:g=>{g.applyEffects({prestige:+8,military:-10,health:-15}); g.toast("陛下浴血突围，惊险脱困，誓师讨逆！");}},
+          {text:"退位让贤（亡国）",do:g=>g.gameOver("usurped")}]});
+     }}},
+   {text:"密召大将军勤王",cond:s=>s.ministers.some(m=>m.post==="marshal"&&m.loyalty>=60),do:G=>{
+     const m=G.s.ministers.find(x=>x.post==="marshal"); const mm=m?m.mil:25;
+     const win=R.chance(55+mm/4);
+     const c=G.s.ministers.find(x=>x.post==="chancellor");
+     if(win){
+       G.applyEffects({prestige:+10,military:-5});
+       if(c){const i=G.s.ministers.indexOf(c); G.s.ministers.splice(i,1); if(c.portrait&&!G.s.blacklist.includes(c.portrait))G.s.blacklist.push(c.portrait);}
+       G.showCard({title:"勤王成功",role:"general",text:`${m?m.name:"大将军"}星夜提兵入卫，里应外合，一举擒贼！`,
+         choices:[{text:"重赏勤王之臣",do:g=>{if(m)m.loyalty=R.clamp(m.loyalty+6);}}]});
+     }else{
+       G.applyEffects({prestige:-6,military:-10});
+       G.showCard({title:"勤王迟矣",role:"general",text:"援军阻于关隘，宫门已破，回天乏术……",
+         choices:[{text:"（大势已去）",do:g=>g.gameOver("usurped")}]});
+     }}},
+   {text:"妥协让权，封其为相国",do:G=>{
+     G.applyEffects({prestige:-14,people:-4});
+     const c=G.s.ministers.find(m=>m.post==="chancellor");
+     if(c){c.ambition=R.clamp(c.ambition+18); c.loyalty=R.clamp(c.loyalty-10);}
+     G.toast("权柄旁落，太师势焰熏天，朝政尽出其门。");}}]},
+
+ /* —— 民变燎原（剿/抚/罪己，剿失败可亡国）—— */
+ {id:"big_rebellion",cat:"大事件",role:"general",weight:1,big:true,
+  cond:s=>s.nation.year>=2 && s.nation.people<46,
+  title:"民变燎原",
+  text:"八百里加急！连岁苛敛，饥民揭竿，旬日聚众十万，连陷州县，烽烟燎原，直逼京畿！",
+  choices:[
+   {text:"遣大军血腥镇压",cond:s=>s.nation.military>=30,do:G=>{
+     const win=R.chance(52);
+     if(win){G.applyEffects({military:-12,people:-10,prestige:+4}); G.showCard({title:"暂平民乱",role:"general",text:"义军主力被剿，然伏尸遍野，血流成河，民心愈寒。",choices:[{text:"善后抚恤",do:g=>g.applyEffects({treasury:-6,people:+4})}]});}
+     else{G.applyEffects({military:-20,people:-12,land:-6}); G.showCard({title:"剿而复炽",role:"general",text:"官军屡剿屡败，乱众愈聚愈多，半壁江山糜烂……",
+       choices:[
+        {text:"被迫迁都南幸",do:g=>g.applyEffects({prestige:-10,treasury:-10,land:-4})},
+        {text:"社稷崩塌（亡国）",cond:s=>s.nation.people<16,do:g=>g.gameOver("min_revolt")}]});}}},
+   {text:"开仓赈济，下诏招安",do:G=>{
+     if(G.s.nation.treasury<10){G.toast("国库空虚，赈济不济，乱势难遏！"); G.applyEffects({people:-6}); return;}
+     G.applyEffects({treasury:-16,people:+16,prestige:-2}); G.toast("开仓放粮、赦其胁从，流民渐散归田。");}},
+   {text:"下罪己诏，严惩贪官以谢天下",do:G=>{
+     G.applyEffects({people:+12,prestige:-4}); G.shiftAllLoyalty(-4); G.toast("罪己诏下，连斩数名巨贪，民愤稍平。");}}]},
+
+ /* —— 列国会盟（倾国之战·亲征/遣将/纵横，决战二段）—— */
+ {id:"big_invasion",cat:"大事件",role:"general",weight:1,big:true,
+  cond:s=>s.nation.year>=3,
+  title:"列国会盟",
+  text:s=>`社稷存亡之秋！${R.pick(ENEMIES)}纠合${R.pick(ENEMIES)}诸部歃血会盟，倾国之兵数十万压境，旌旗蔽野，存亡系于一役！`,
+  choices:[
+   {text:"御驾亲征，背水一战",cond:s=>s.emperor.martial>=45,do:G=>{
+     const mm=(()=>{const m=G.s.ministers.find(x=>x.post==="marshal");return m?m.mil:0;})();
+     const power=G.s.emperor.martial + G.s.nation.military*0.5 + mm*0.5;
+     const win=(power+R.i(-18,30))>=92;
+     if(win){G.applyEffects({prestige:+22,land:+10,military:-14,people:+8}); G.showCard({title:"封狼居胥",role:"general",text:"陛下亲冒矢石，三军用命，鏖战三日，敌酋授首！开疆拓土，威加海内！",choices:[{text:"勒石纪功",do:()=>{}}]});}
+     else{G.applyEffects({military:-25,land:-12,people:-10,prestige:-8}); G.showCard({title:"亲征大败",role:"general",text:"中军被冲散，王师溃于阵前，陛下仅以身免……",
+       choices:[
+        {text:"退守京畿，再图后举",do:g=>g.applyEffects({treasury:-10})},
+        {text:"乱军之中身中流矢",cond:s=>s.nation.military<14,do:g=>g.emperorDies("battle")}]});}}},
+   {text:"遣大将军倾国御敌",cond:s=>s.ministers.some(m=>m.post==="marshal"),do:G=>{
+     const m=G.s.ministers.find(x=>x.post==="marshal"); const mm=m?m.mil:25;
+     const win=R.chance(44+mm/3);
+     if(win){G.applyEffects({prestige:+14,land:+6,military:-16}); if(m)m.loyalty=R.clamp(m.loyalty+6); G.showCard({title:"力挽狂澜",role:"general",text:`${m?m.name:"大将军"}用兵如神，诱敌深入，大破联军于国门之外！`,choices:[{text:"凯旋郊迎",do:()=>{}}]});}
+     else{G.applyEffects({military:-22,land:-14,people:-8}); G.showCard({title:"丧师失地",role:"general",text:"大将军兵败被围，连失数州，告急文书雪片般飞来……",choices:[{text:"忍辱割地求和",do:g=>g.applyEffects({treasury:-14,prestige:-10})}]});}}},
+   {text:"倾国库金帛，纵横捭阖以离间",do:G=>{
+     if(G.s.nation.treasury<25){G.toast("国库不足以行此策！"); return;}
+     const ok=R.chance(52+G.s.emperor.politics/5);
+     if(ok){G.applyEffects({treasury:-25,prestige:+4}); G.toast("重金离间，盟约土崩，联军内讧自溃！");}
+     else{G.applyEffects({treasury:-25,military:-10,people:-4}); G.toast("离间不成，反遭轻慢，敌势愈炽。");}}}]},
+
+ /* —— 夺嫡之争（立长/择贤/放任，放任可丧子）—— */
+ {id:"big_heir",cat:"大事件",role:"prince",weight:1,big:true,
+  cond:s=>s.children.filter(c=>c.gender==="男"&&c.age>=15).length>=2,
+  title:"夺嫡之争",
+  text:"国本动摇！诸皇子渐长，各结党羽、明争暗斗，朝臣亦分立门户，京师暗流汹涌。",
+  choices:[
+   {text:"早立长子，以绝纷争",do:G=>{
+     const sons=G.s.children.filter(c=>c.gender==="男").sort((a,b)=>b.age-a.age);
+     if(sons[0]){G.s.children.forEach(c=>c.isHeir=false); sons[0].isHeir=true; G.applyEffects({prestige:+6}); G.toast(`立长子 ${sons[0].name} 为太子，国本既定。`);}}},
+   {text:"考校才德，择贤而立",do:G=>{
+     const sons=G.s.children.filter(c=>c.gender==="男"&&c.age>=15).sort((a,b)=>(b.int+b.politics)-(a.int+a.politics));
+     const best=sons[0]; if(best){G.s.children.forEach(c=>c.isHeir=false); best.isHeir=true;}
+     G.applyEffects({prestige:+4,politics:+2}); G.shiftAllLoyalty(-2);
+     G.showCard({title:"择贤之议",role:"prince",text:`众望所归，立 ${best?best.name:"皇子"} 为储。然落选诸子心怀怨望，各府门可罗雀又暗藏杀机……`,
+       choices:[
+        {text:"厚赏安抚诸王",do:g=>g.applyEffects({treasury:-8,prestige:+2})},
+        {text:"削藩夺权，以绝后患",do:g=>{g.applyEffects({prestige:+4}); g.shiftAllLoyalty(-3);}}]});}},
+   {text:"放任相争，坐观其变",do:G=>{
+     G.applyEffects({prestige:-8}); G.shiftAllLoyalty(-4);
+     const sons=G.s.children.filter(c=>c.gender==="男");
+     if(R.chance(45) && sons.length>=2){
+       const victim=R.pick(sons); const i=G.s.children.indexOf(victim); G.s.children.splice(i,1);
+       G.showCard({title:"骨肉相残",role:"prince",text:`夺嫡终酿惨祸——皇子 ${victim.name} 离奇暴毙于府邸，宫闱腥风血雨。`,choices:[{text:"痛而无言",do:()=>{}}]});
+     }else{G.toast("诸子相争不休，朝纲日紊，国势暗损。");}}}]},
+
+ /* —— 荧惑守心（祥瑞/天怒分支）—— */
+ {id:"big_omen",cat:"大事件",role:"eunuch",weight:1,big:true,cond:s=>s.nation.year>=2,
+  title:"荧惑守心",
+  text:"钦天监夜观天象，惊见荧惑守心——史载主天子失德、社稷有变；亦或，是改天换命之兆？满朝惶惶。",
+  choices:[
+   {text:"斋戒祈禳，虔诚罪己",do:G=>{
+     const ok=R.chance(58);
+     if(ok){G.applyEffects({people:+12,prestige:+6,health:+4}); G.showCard({title:"天心感格",role:"eunuch",text:"七日斋戒，诚意上达，异象消弭，旋即甘霖普降、五谷丰登，万民称颂圣德！",choices:[{text:"敬天法祖",do:()=>{}}]});}
+     else{G.applyEffects({people:-6}); G.toast("禳之不应，流言四起，人心惶惶。");}}},
+   {text:"广施仁政，大赦天下",do:G=>{G.applyEffects({treasury:-12,people:+14,prestige:+4}); G.toast("大赦天下，蠲免逋赋，与民更始。");}},
+   {text:"斥为妖言，诛钦天监",do:G=>{
+     G.applyEffects({people:-10,prestige:-4}); G.shiftAllLoyalty(-3);
+     if(R.chance(35)){G.showCard({title:"天怒示警",role:"eunuch",text:"翌日京师地动山摇，宫室倾颓、火光冲天，举国震恐，皆言天谴！",choices:[{text:"惶恐补救",do:g=>g.applyEffects({treasury:-10,people:+4})}]});}}}]}
+];
+EVENTS.push(...BIG_EVENTS);

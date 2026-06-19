@@ -19,6 +19,10 @@ const ENDINGS = {
 
 let G;  // 指向自身，供事件 do() 使用
 
+/* 边际递减成长：属性越高，单次涨得越少（base 为低位时的近似涨幅）。
+   解决「按天后行动频率剧增 → 五维瞬间顶满」的平衡问题。 */
+const grow = (cur, base) => R.clamp(cur + Math.round(base * (100 - cur) / 100));
+
 const api = {
   s:null, manifest:null,
 
@@ -45,21 +49,23 @@ const api = {
       emperor:{name:name||"萧承乾", age:R.i(16,20), portrait:this.pickFace(M),
         health:70, int:R.i(40,65), charm:R.i(40,65),
         martial:R.i(35,60), politics:R.i(40,65), exp:0},
-      nation:{year:1, month:1,
+      nation:{year:1, month:1, day:1, phase:0,
         treasury:60, military:55, people:60, food:55, land:50, prestige:45},
       ministers:roster,
       consorts:buildConsorts(M.consorts, 3),
       children:[],
-      pool:{ // 剩余立绘，供科举/选秀补充
+      pool:{ // 剩余立绘，供招贤/选秀补充
         ministers:R.shuffle(M.ministers).slice(8,80),
         consorts:R.shuffle(M.consorts).slice(3),
         generals:R.shuffle(M.generals).slice(4)
       },
+      blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
     // 默认任命
     this.autoAppoint();
+    MapSys.initState(this.s);
     this.logMsg(`${this.s.dynasty}立国，${this.s.reign}帝即位，时年${this.s.emperor.age}岁。`);
     UI.toGame();
     SFX.gong();
@@ -92,7 +98,7 @@ const api = {
       s._rebelName=s.rebel.name;
       return EVENTS.find(e=>e.id==="ev_rebel_min");
     }
-    if(!R.chance(72)) return null;                 // 部分回合无事
+    if(!R.chance(22)) return null;                 // 多数时段无事（按时段触发，频率调低）
     const cands=EVENTS.filter(e=>(e.weight||1)>0 && (!e.cond||e.cond(s)) && !(e.once&&s.flags["done_"+e.id]));
     if(!cands.length) return null;
     const tot=cands.reduce((a,e)=>a+(e.weight||1),0);
@@ -107,6 +113,7 @@ const api = {
     const choices=ev.choices.filter(c=>!c.cond||c.cond(s));
     const opt=choices[idx]; if(!opt) return;
     SFX.pick();
+    this._bigChain = !!ev.big;          // 大事件标记，沿连锁传递到后续 showCard 卡片
     if(opt.effects) this.applyEffects(opt.effects);
     if(ev.once) s.flags["done_"+ev.id]=true;
     s.pendingEvent=null;
@@ -122,26 +129,30 @@ const api = {
     else this.renderTurn();
   },
 
-  showCard(card){ this.s.pendingEvent=card; },
+  showCard(card){ if(this._bigChain && card.big===undefined) card.big=true; this.s.pendingEvent=card; },
 
-  /* ---------- 行动（每回合一次）---------- */
+  /* ---------- 行动（每个时段一次）----------
+     按天后行动频率剧增，故五维成长改为「边际递减」：属性越高、单次涨得越少，
+     自然趋近上限而不会一两月顶到 100。grow(cur,base) 见文件顶部。 */
   ACTIONS:{
     govern:{name:"勤政",icon:ICONS.govern,hint:"批阅奏章，理政安民",run(s){
-      const g=s.emperor.politics; s.nation.treasury+=Math.round(g/12)+R.i(0,3);
-      s.nation.people+=Math.round(g/22)+1; s.emperor.health-=2; s.emperor.exp+=2;
-      return `勤勉理政，国库 +${Math.round(g/12)+1}，民心略增。`;}},
+      const g=s.emperor.politics, dt=Math.max(1,Math.round(g/50));
+      s.nation.treasury+=dt; if(R.chance(45))s.nation.people+=1;
+      s.emperor.health-=1; s.emperor.exp+=1;
+      return `勤勉理政，国库 +${dt}。`;}},
     read:{name:"读书",icon:ICONS.read,hint:"研读经史，增长智略",run(s){
-      s.emperor.int+=R.i(2,4); s.emperor.politics+=1; s.emperor.health-=1;
-      return "潜心向学，智力、政治有所长进。";}},
+      const b=s.emperor.int; s.emperor.int=grow(b,9); if(R.chance(40))s.emperor.politics=grow(s.emperor.politics,5);
+      s.emperor.health-=1;
+      return `潜心向学，智力 +${s.emperor.int-b}。`;}},
     train:{name:"习武",icon:ICONS.train,hint:"演练武艺，强身健体",run(s){
-      s.emperor.martial+=R.i(2,4); s.emperor.health+=1;
-      return "勤练弓马，武力增长，龙体康健。";}},
+      const b=s.emperor.martial; s.emperor.martial=grow(b,9); if(R.chance(30))s.emperor.health+=1;
+      return `勤练弓马，武力 +${s.emperor.martial-b}。`;}},
     cultivate:{name:"养性",icon:ICONS.cultivate,hint:"陶冶情操，增益魅力",run(s){
-      s.emperor.charm+=R.i(2,4); s.emperor.health+=1;
-      return "怡情养性，魅力提升。";}},
+      const b=s.emperor.charm; s.emperor.charm=grow(b,9); if(R.chance(30))s.emperor.health+=1;
+      return `怡情养性，魅力 +${s.emperor.charm-b}。`;}},
     rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康",run(s){
-      s.emperor.health+=R.i(5,8);
-      return "静心休养，龙体大安。";}},
+      s.emperor.health+=R.i(3,5);
+      return "静心休养，龙体渐安。";}},
     visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶",select:"harem"},
     audience:{name:"召见群臣",icon:ICONS.audience,hint:"召见大臣，笼络忠心",select:"court"}
   },
@@ -157,7 +168,7 @@ const api = {
 
   visitConsort(id){
     const s=this.s; const c=s.consorts.find(x=>x.id===id); if(!c)return;
-    if(s.actedThisTurn) { this.toast("本月已理政"); return; }
+    if(s.actedThisTurn) { this.toast("此时段已行一事"); return; }
     c.favor=R.clamp(c.favor+R.i(6,12)); c.bond=R.clamp(c.bond+R.i(3,7));
     s.actedThisTurn=true;
     // 受孕：与健康、宠爱相关
@@ -168,7 +179,7 @@ const api = {
 
   audienceMinister(id){
     const s=this.s; const m=s.ministers.find(x=>x.id===id); if(!m)return;
-    if(s.actedThisTurn){ this.toast("本月已理政"); return; }
+    if(s.actedThisTurn){ this.toast("此时段已行一事"); return; }
     m.loyalty=R.clamp(m.loyalty+R.i(5,10)); m.ambition=R.clamp(m.ambition-R.i(2,5));
     s.actedThisTurn=true; SFX.good();
     this.toast(`召见 ${m.name}，君臣相得，忠诚提升。`); UI.closePanel(); this.renderTurn();
@@ -190,8 +201,39 @@ const api = {
   executeMinister(id){
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
     const m=s.ministers[i]; m.post=null; s.ministers.splice(i,1);
-    s.nation.people-=3; this.shiftAllLoyalty(-3);
+    if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    s.nation.people=R.clamp(s.nation.people-3); this.shiftAllLoyalty(-3);
     SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); UI.renderPanel("court"); this.renderTurn();
+  },
+  // 罢免：非致命，逐出朝堂、永不录用（进黑名单），惩罚轻于处死
+  dismissMinister(id){
+    const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
+    const m=s.ministers[i]; m.post=null; s.ministers.splice(i,1);
+    if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    this.shiftAllLoyalty(-1);
+    SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`);
+    this.logMsg(`罢免 ${m.name}，逐出朝堂。`);
+    UI.renderPanel("court"); this.renderTurn();
+  },
+  // 招贤馆：抽卡式招募。去重（池内本就唯一）+ 排除黑名单（已罢免/处死者）
+  recruitDraw(){
+    const s=this.s, n=s.nation;
+    if(n.treasury < RECRUIT_COST){ this.toast("国库不足，无以招贤"); UI.renderPanel("court"); return null; }
+    let idx=-1;
+    for(let i=0;i<s.pool.ministers.length;i++){
+      if(!s.blacklist.includes(s.pool.ministers[i].file)){ idx=i; break; }
+    }
+    if(idx<0){ this.toast("天下贤才已尽入彀中"); return null; }
+    n.treasury-=RECRUIT_COST;
+    const src=s.pool.ministers.splice(idx,1)[0];
+    const m=buildMinisters([src],1)[0];
+    s.ministers.push(m);
+    SFX.gong();
+    this.logMsg(`招贤馆纳新贤 ${m.name}（文才${m.civ}·武略${m.mil}）。`);
+    this.clampNation();
+    UI.showRecruit(m);
+    UI.renderPanel("court"); this.renderTurn();
+    return m;
   },
   promoteConsort(id){
     const s=this.s, c=s.consorts.find(x=>x.id===id); if(!c)return;
@@ -207,6 +249,35 @@ const api = {
     UI.renderPanel("heir");
   },
 
+  /* 选秀纳妃：抽卡式从民间良家女中选纳一位（池内唯一，天然去重）*/
+  selectConsort(){
+    const s=this.s, n=s.nation;
+    if(n.treasury < SELECT_COST){ this.toast("国库不足，无以采选"); UI.renderPanel("harem"); return null; }
+    const src=s.pool.consorts.shift();
+    if(!src){ this.toast("良家女已尽选入宫闱"); return null; }
+    n.treasury-=SELECT_COST;
+    const c=buildConsorts([src],1)[0];
+    s.consorts.push(c);
+    SFX.gong();
+    this.logMsg(`选秀纳新 ${c.name}（美貌${c.beauty}）入宫。`);
+    this.clampNation();
+    UI.showSelect(c);
+    UI.renderPanel("harem"); this.renderTurn();
+    return c;
+  },
+
+  /* 教养皇嗣：消耗本时段行动，按边际递减提升孩子某一维 */
+  educateChild(id,kind){
+    const s=this.s; if(s.actedThisTurn){ this.toast("此时段已行一事"); return; }
+    const c=s.children.find(x=>String(x.id)===String(id)); if(!c)return;
+    const map={int:"智力",charm:"魅力",martial:"武力",politics:"政治"};
+    const k=kind||R.pick(Object.keys(map));
+    const b=c[k]||40; c[k]=R.clamp(grow(b,8));
+    s.actedThisTurn=true; SFX.good();
+    this.toast(`教养 ${c.name}，${map[k]} +${c[k]-b}。`);
+    UI.closePanel(); this.renderTurn();
+  },
+
   /* ---------- 事件 do() 可调用的 API ---------- */
   shiftAllLoyalty(d){ this.s.ministers.forEach(m=>m.loyalty=R.clamp(m.loyalty+d)); },
   allConsortFavor(d){ this.s.consorts.forEach(c=>c.favor=R.clamp(c.favor+d)); },
@@ -216,7 +287,9 @@ const api = {
   recruit(n){
     const s=this.s; let got=0;
     for(let k=0;k<n;k++){
-      const src=s.pool.ministers.shift(); if(!src) break;
+      let src=null;
+      while(s.pool.ministers.length){ const cand=s.pool.ministers.shift(); if(!s.blacklist.includes(cand.file)){ src=cand; break; } }
+      if(!src) break;
       s.ministers.push(buildMinisters([src],1)[0]); got++;
     }
     this.toast(`科举得士，${got} 位新贤入朝。`);
@@ -262,35 +335,78 @@ const api = {
     this.showCard({title,text,role,choices:[{text:"继续",do:()=>{}}]});
   },
 
-  /* ---------- 结算（下一回合）---------- */
+  /* ---------- 快进：连推时段，遇事件 / 月末 / 国丧 即停 ---------- */
+  fastForward(){
+    const s=this.s; if(s.over||s.pendingEvent) return;
+    const startM=s.nation.month, startY=s.nation.year, startGen=s.gen;
+    this._ff=true;                       // 静默：循环内不重绘 DOM
+    let guard=0;
+    while(!s.over && !s.pendingEvent && guard<400){
+      this.nextTurn(); guard++;
+      if(s.gen!==startGen) break;        // 改朝换代（弹了传位公告）
+      if(s.nation.month!==startM || s.nation.year!==startY) break;  // 跨月即停
+    }
+    this._ff=false;
+    if(!s.over){ this.renderTurn(); if(!s.pendingEvent) this.toast("⏩ 已快进至月末（或下一桩朝政）"); }
+  },
+
+  /* ---------- 推进一个时段（早→中→晚→次日）---------- */
   nextTurn(){
-    const s=this.s; if(s.over) return;
+    const s=this.s, n=s.nation; if(s.over) return;
     if(s.pendingEvent){ this.toast("请先处理朝政奏折"); return; }
-    SFX.deal();
-    this.resolve();
-    if(s.over) return;
+    if(!this._ff) SFX.deal();
+    n.phase++;
+    if(n.phase>2){                       // 一天过完
+      n.phase=0; n.day++;
+      this.dailyTick();
+      if(s.over) return;
+      if(n.day>MONTH_DAYS){              // 一月过完 → 结算
+        n.day=1; n.month++;
+        this.monthlySettle();
+        if(s.over) return;
+        if(n.month>12){                  // 一年过完 → 年事
+          n.month=1; n.year++;
+          this.yearlyTick();
+          if(s.over) return;
+        }
+      }
+    }
     if(this.checkEndings()) return;
     if(s._succession){ const d=s._succession; s._succession=null; UI.announceSuccession(d,()=>this.beginTurn()); return; }
     this.beginTurn();
   },
 
-  resolve(){
+  /* 每日：轻量推进（健康微漂移，留作日后扩展钩子）*/
+  dailyTick(){
+    const e=this.s.emperor;
+    if(R.chance(8)) e.health-=1;         // 日常损耗（约每月 -2~3，与原月制相当）
+    this.clampAll();
+  },
+
+  /* 每月：经济 / 忠诚 / 怀孕 / 百官治绩结算 */
+  monthlySettle(){
     const s=this.s, n=s.nation, e=s.emperor;
+    MapSys.produce(s); MapSys.growEnemies(s);   // 列国舆图：自有州郡月产 + 敌境growth
+    // 百官治绩
+    // 增益随接近上限递减（headroom 软顶）：n[k] 越高单位增益越小，使国力收敛到中段而非焊满
+    const gain=(k,amt)=>{ n[k]+=amt*(100-n[k])/100; };
     // 百官治绩
     s.ministers.forEach(m=>{
       if(!m.post) return;
       const pos=POSITIONS.find(p=>p.id===m.post); const t=m[pos.use];
-      if(m.post==="chancellor"){ n.treasury+=Math.round(t/22); n.people+=Math.round(t/34); }
-      if(m.post==="finance"){ n.treasury+=Math.round(t/18); n.food+=Math.round(t/40); }
-      if(m.post==="censor"){ n.people+=Math.round(t/45); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-1)); }
-      if(m.post==="marshal"){ n.military+=Math.round(t/26); }
-      if(m.post==="defense"){ n.military+=Math.round(t/30); }
+      if(m.post==="chancellor"){ gain("treasury",t/15); gain("people",t/32); }
+      if(m.post==="finance"){ gain("treasury",t/11); gain("food",t/28); }
+      if(m.post==="censor"){ gain("people",t/40); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-1)); }
+      if(m.post==="marshal"){ gain("military",t/18); }
+      if(m.post==="defense"){ gain("military",t/22); }
     });
-    // 经济：税入 - 开支
-    const income=Math.round(n.people/12 + n.land/16);
-    const upkeep=Math.round(n.military/14 + s.consorts.length*0.6 + s.ministers.filter(m=>m.post).length);
-    n.treasury+=income-upkeep;
-    n.food+=Math.round(n.land/22 - n.people/34);
+    // 经济：税入 - 开支（开支随军队/后宫/百官增长 → 治国是收支平衡的艺术）
+    const income=n.people/18 + n.land/24;       // 基础税入偏薄，丰盈须靠丞相/户部治绩
+    const upkeep=n.military/11 + s.consorts.length*0.8 + s.ministers.filter(m=>m.post).length*1.3;
+    n.treasury+=income-upkeep;                 // 净流可正可负，荒政则赤字
+    n.food   += n.land/24 - n.people/24;        // 地养粮、民耗粮（人多则粮紧）
+    n.military-= n.military/28;                  // 兵员月损耗（老弱逃亡），无大将军则渐衰
+    n.people  -= n.people/120;                   // 民生自然消长（迁徙/老病），靠治绩维系
     // 拮据反噬
     if(n.treasury<15){ n.people-=4; this.shiftAllLoyalty(-3); }
     if(n.food<12){ n.people-=5; }
@@ -307,20 +423,29 @@ const api = {
       c.favor=R.clamp(c.favor-1);
       if(c.pregnant!=null){ c.pregnant++; if(c.pregnant>=10){ this.birth(c); c.pregnant=null; } }
     });
-    // 帝王健康/年龄
+    // 帝王健康随龄消耗（按月）
     e.health-=R.i(0,1)+(e.age>=45?1:0)+(e.age>=60?1:0);
-    // 月历推进
-    n.month++;
-    if(n.month>12){
-      n.month=1; n.year++; e.age++; s.peakAge=Math.max(s.peakAge,e.age);
-      s.children.forEach(c=>c.age++);
-      s.ministers.forEach(m=>{ m.age++; if(m.age>72 && R.chance(20)){ this.retire(m); } });
-      // 丹毒
-      if(s.flags.pills>=5 && R.chance(s.flags.pills*4)){ this.emperorDies("poison"); return; }
-      // 天年
-      if(e.age>=50 && R.chance((e.age-48)*4)){ this.emperorDies("age"); return; }
-    }
     this.clampNation();
+  },
+
+  /* 每年：年龄增长 / 老臣告老 / 丹毒 / 天年 */
+  yearlyTick(){
+    const s=this.s, n=s.nation, e=s.emperor;
+    e.age++; s.peakAge=Math.max(s.peakAge,e.age);
+    s.children.forEach(c=>{ c.age++; this.growChild(c); });
+    s.ministers.forEach(m=>{ m.age++; if(m.age>72 && R.chance(20)){ this.retire(m); } });
+    if(s.flags.pills>=5 && R.chance(s.flags.pills*4)){ this.emperorDies("poison"); return; }
+    if(e.age>=50 && R.chance((e.age-48)*4)){ this.emperorDies("age"); return; }
+  },
+
+  /* 孩子成长：随年龄推进成长阶段（婴/幼/少/青），属性随之增益 */
+  growChild(c){
+    const st=childStage(c.age);
+    if(c._stage===st.key) return;
+    c._stage=st.key;
+    // 进入新阶段，五维小幅成长
+    ["int","charm","martial","politics"].forEach(k=>{ c[k]=R.clamp((c[k]||40)+R.i(2,6)); });
+    if(st.key!=="baby") this.logMsg(`皇${c.gender==="男"?"子":"女"}${c.name} 已长成${st.name}。`);
   },
 
   retire(m){ m.post=null; const i=this.s.ministers.indexOf(m); if(i>=0)this.s.ministers.splice(i,1); this.logMsg(`老臣 ${m.name} 告老还乡。`); },
@@ -328,7 +453,8 @@ const api = {
   birth(c){
     const s=this.s; const boy=R.chance(52);
     const name=(boy?R.pick(GIVEN_M):R.pick(GIVEN_F));
-    const child={name, gender:boy?"男":"女", age:0, mother:c.name, isHeir:false, married:false,
+    const child={id:"ch_"+Date.now().toString(36)+Math.floor(Math.random()*1e4),
+      name, gender:boy?"男":"女", age:0, mother:c.name, isHeir:false, married:false, _stage:"baby",
       health:R.i(50,80), int:R.i(30,70), charm:R.i(30,70), martial:R.i(30,70), politics:R.i(30,70)};
     s.children.push(child);
     s.nation.prestige=R.clamp(s.nation.prestige+2);
@@ -397,11 +523,11 @@ const api = {
 
   logMsg(t){ const s=this.s; s.log.unshift(`${s.nation.year}年${s.nation.month}月 · ${t}`); if(s.log.length>60)s.log.pop(); },
 
-  renderTurn(){ UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); this.save(); },
+  renderTurn(){ if(this._ff){ this.save(); return; } UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); this.save(); },
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
-  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ this.s=d; UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
+  load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ this.s=d; MapSys.initState(this.s); UI.toGame(); this.renderTurn(); return true; } }catch(e){} return false; },
   saveBest(){ const s=this.s; const best=JSON.parse(localStorage.getItem(LS_BEST)||"null");
     const cur={dynasty:s.dynasty,years:s.nation.year,gen:s.gen,score:this.score()};
     if(!best||cur.score>best.score) localStorage.setItem(LS_BEST, JSON.stringify(cur)); }

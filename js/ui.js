@@ -19,14 +19,15 @@ function faceFor(role){
   return rnd(M.ministers);
 }
 function rnd(a){ return a&&a.length ? a[Math.floor(Math.random()*a.length)].file : ""; }
-function img(src,cls){ return src?`<img class="${cls}" src="${src}" loading="lazy" alt="">`
+function img(src,cls){ return src?`<img class="${cls}" src="${src}" loading="lazy" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'${cls} noface',textContent:'？'}))">`
   :`<div class="${cls} noface">？</div>`; }
 
 /* ---------- HUD ---------- */
 function renderHUD(){
   const s=Game.s,n=s.nation;
   $("hud-title").textContent=`${s.dynasty} · ${s.reign}`;
-  $("hud-date").textContent=`${n.year}年 ${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月`;
+  const ph=PHASES[n.phase||0]||PHASES[0];
+  $("hud-date").textContent=`${n.year}年 ${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.icon}${ph.name}`;
   $("hud-nation").innerHTML=Object.keys(NATION_STATS).map(k=>{
     const m=NATION_STATS[k]; const v=Math.round(n[k]);
     const low=v<20?"low":"";
@@ -37,7 +38,7 @@ function renderHUD(){
 /* ---------- 帝王面板 ---------- */
 function renderEmperor(){
   const e=Game.s.emperor;
-  $("emp-portrait").innerHTML=img(e.portrait,"emp-face");
+  $("emp-portrait").innerHTML=img(emperorFace(e.age),"emp-face");
   $("emp-name").textContent=e.name+" 帝";
   $("emp-age").textContent=`圣寿 ${e.age} · 第 ${Game.s.gen} 代`;
   $("emp-attrs").innerHTML=Object.keys(EMP_ATTRS).map(k=>{
@@ -56,8 +57,10 @@ function showEvent(card){
   const text=typeof card.text==="function"?card.text(s):card.text;
   const title=typeof card.title==="function"?card.title(s):card.title;
   const choices=card.choices.filter(c=>!c.cond||c.cond(s));
+  const banner=card.big?`<div class="ev-banner">⚠ 大 事 件 · 国 之 存 亡</div>`:"";
   $("event-area").innerHTML=`
-    <div class="ev-card">
+    <div class="ev-card${card.big?" big":""}">
+      ${banner}
       <div class="ev-top">
         ${img(card._face,"ev-face")}
         <div class="ev-meta"><span class="ev-speaker">${speaker}</span>
@@ -78,10 +81,11 @@ function showEvent(card){
 function showMonth(){
   const s=Game.s,n=s.nation;
   const posts=s.ministers.filter(m=>m.post).length;
+  const ph=PHASES[n.phase||0]||PHASES[0];
   $("event-area").innerHTML=`
     <div class="month-card">
-      <h3>${n.year}年 · 本月朝政</h3>
-      <p class="month-sub">四海无大事。陛下可择一事而行，或召见群臣、临幸后宫，再进入下一回合。</p>
+      <h3>${ph.icon} ${n.year}年${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.name}</h3>
+      <p class="month-sub">${ph.hint}。陛下可择一事而行，或召见群臣、临幸后宫，再「下一时段」。</p>
       <div class="month-grid">
         <div>在职大臣 <b>${posts}/${POSITIONS.length}</b></div>
         <div>后宫嫔妃 <b>${s.consorts.length}</b></div>
@@ -95,34 +99,49 @@ function showMonth(){
 function renderActions(){
   const s=Game.s;
   if(s.pendingEvent){ $("action-area").innerHTML=`<p class="act-hint">⚑ 请先在上方处理朝政奏折</p>`; return; }
-  if(s.actedThisTurn){ $("action-area").innerHTML=`<p class="act-hint">✔ 本月已理政，可进入下一回合</p>`; return; }
-  $("action-area").innerHTML=`<div class="act-grid">`+
-    Object.keys(Game.ACTIONS).map(k=>{
-      const a=Game.ACTIONS[k];
-      return `<button class="act-btn" data-a="${k}" title="${a.hint}"><i>${a.icon}</i><span>${a.name}</span></button>`;
-    }).join("")+`</div>`;
-  [...document.querySelectorAll(".act-btn")].forEach(b=>b.onclick=()=>Game.doAction(b.dataset.a));
+  const ff=`<button class="act-ff" id="btn-ff">⏩ 快进至下一事件 / 月末</button>`;
+  if(s.actedThisTurn){ $("action-area").innerHTML=`<p class="act-hint">✔ 此时段已行一事，可「下一时段」</p>`+ff; }
+  else{
+    $("action-area").innerHTML=`<div class="act-grid">`+
+      Object.keys(Game.ACTIONS).map(k=>{
+        const a=Game.ACTIONS[k];
+        return `<button class="act-btn" data-a="${k}" title="${a.hint}"><i>${a.icon}</i><span>${a.name}</span></button>`;
+      }).join("")+`</div>`+ff;
+    [...document.querySelectorAll(".act-btn")].forEach(b=>b.onclick=()=>Game.doAction(b.dataset.a));
+  }
+  const f=$("btn-ff"); if(f) f.onclick=()=>Game.fastForward();
 }
 
 /* ---------- 面板 ---------- */
 let panelOpts={};
 function openPanel(name,opts){ panelOpts=opts||{}; $("panel-mask").classList.add("open"); renderPanel(name); }
 function closePanel(){ $("panel-mask").classList.remove("open"); panelOpts={}; }
-const PANEL_TITLE={court:"朝堂 · 满朝文武",harem:"后宫 · 嫔妃",heir:"皇嗣 · 子女",army:"军务",log:"史册"};
+const PANEL_TITLE={map:"天下 · 列国舆图",court:"朝堂 · 满朝文武",harem:"后宫 · 嫔妃",heir:"皇嗣 · 子女",army:"军务",log:"史册"};
 
 function bar(v,color){ return `<span class="mini-bar"><i style="width:${Math.round(v)}%;background:${color}"></i></span>`; }
 
 function renderPanel(name){
   $("panel-title").textContent=PANEL_TITLE[name]||name;
   const s=Game.s; let h="";
-  if(name==="court"){
+  if(name==="map"){
+    h+=MapSys.renderBody(s);
+  }
+  else if(name==="court"){
     const selecting=panelOpts.selectAction==="audience";
-    if(selecting) h+=`<p class="panel-tip">点击一位大臣以「召见」（消耗本月行动）</p>`;
+    if(selecting) h+=`<p class="panel-tip">点击一位大臣以「召见」（消耗此时段行动）</p>`;
+    else{
+      const left=s.pool.ministers.filter(p=>!s.blacklist.includes(p.file)).length;
+      h+=`<div class="recruit-bar">
+        <div class="rc-info"><b>招贤馆</b><span>耗国库 ${RECRUIT_COST}，抽募一位新贤（不重复·已罢免/处死者不再现）。可招 <b>${left}</b> 人</span></div>
+        <button class="btn btn-primary rc-btn" ${s.nation.treasury<RECRUIT_COST||left<=0?"disabled":""} onclick="Game.recruitDraw()">求 贤 ✦</button>
+      </div>`;
+    }
     h+=s.ministers.map(m=>{
       const pos=m.post?POSITIONS.find(p=>p.id===m.post).name:"（闲职）";
       const postBtns=selecting?"":`<div class="post-row">`+
         POSITIONS.map(p=>`<button class="chip ${m.post===p.id?"on":""}" onclick="Game.appoint('${m.id}','${m.post===p.id?"":p.id}')">${p.name}</button>`).join("")+
-        `<button class="chip danger" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+
+        `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+
+        `<button class="chip warn" onclick="Game.dismissMinister('${m.id}')">罢免</button>`+
         `<button class="chip danger" onclick="Game.executeMinister('${m.id}')">处死</button></div>`;
       return `<div class="m-card" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
@@ -136,7 +155,14 @@ function renderPanel(name){
   }
   else if(name==="harem"){
     const selecting=panelOpts.selectAction==="visit";
-    if(selecting) h+=`<p class="panel-tip">点击一位嫔妃以「临幸」（消耗本月行动）</p>`;
+    if(selecting) h+=`<p class="panel-tip">点击一位嫔妃以「临幸」（消耗此时段行动）</p>`;
+    else{
+      const left=s.pool.consorts.length;
+      h+=`<div class="recruit-bar">
+        <div class="rc-info"><b>选秀采选</b><span>耗国库 ${SELECT_COST}，纳一位良家女入宫（不重复）。可选 <b>${left}</b> 人</span></div>
+        <button class="btn btn-primary rc-btn" ${s.nation.treasury<SELECT_COST||left<=0?"disabled":""} onclick="Game.selectConsort()">采 选 ✦</button>
+      </div>`;
+    }
     h+=s.consorts.map(c=>{
       const preg=c.pregnant!=null?`<span class="preg">有孕 ${c.pregnant}/10</span>`:"";
       const act=selecting?"":`<button class="chip" onclick="Game.promoteConsort('${c.id}')">晋位</button>`;
@@ -153,16 +179,24 @@ function renderPanel(name){
   else if(name==="heir"){
     h+=s.children.length?s.children.map(c=>{
       const heir=c.isHeir?`<span class="m-post heir">太子</span>`:"";
-      const btn=(c.gender==="男"&&!c.isHeir)?`<button class="chip" onclick="Game.setHeir('${c.name}')">立为太子</button>`:"";
+      const st=childStage(c.age);
+      const setBtn=(c.gender==="男"&&!c.isHeir)?`<button class="chip" onclick="Game.setHeir('${c.name}')">立为太子</button>`:"";
+      // 已成年(弱冠)不再教养
+      const edu=st.key!=="youth"?`
+        <button class="chip" onclick="Game.educateChild('${c.id}','int')">习文</button>
+        <button class="chip" onclick="Game.educateChild('${c.id}','martial')">习武</button>
+        <button class="chip" onclick="Game.educateChild('${c.id}','charm')">修仪</button>
+        <button class="chip" onclick="Game.educateChild('${c.id}','politics')">问政</button>`:"";
       return `<div class="m-card child">
+        ${img("assets/portraits/children/"+st.key+".png","child-face")}
         <div class="m-info">
-          <div class="m-head"><b>${c.name}</b><span class="m-post">皇${c.gender==="男"?"子":"女"} · ${c.age}岁</span>${heir}</div>
+          <div class="m-head"><b>${c.name}</b><span class="m-post">皇${c.gender==="男"?"子":"女"} · ${c.age}岁 · ${st.name}</span>${heir}</div>
           <div class="m-line">母 ${c.mother}</div>
           <div class="m-line">智${c.int} 魅${c.charm} 武${c.martial} 政${c.politics}</div>
-          ${btn}
+          <div class="post-row">${edu}${setBtn}</div>
         </div></div>`;
     }).join(""):`<p class="panel-tip">膝下尚无子嗣，临幸后宫以开枝散叶。</p>`;
-    h+=`<p class="panel-tip">※ 帝王驾崩时，由太子（或最年长皇子）继位，江山世代相传；若绝嗣则亡国。</p>`;
+    h+=`<p class="panel-tip">※ 教养可消耗当前时段提升皇嗣某一维（边际递减）；弱冠成年后定型。帝王驾崩时由太子（或最年长皇子）继位，绝嗣则亡国。</p>`;
   }
   else if(name==="army"){
     const n=s.nation, marshal=s.ministers.find(m=>m.post==="marshal");
@@ -209,6 +243,37 @@ function showEnd(e,stat){
   show("end");
 }
 
+/* ---------- 招贤抽卡结果 ---------- */
+function showRecruit(m){
+  openModal(`<div class="recruit-reveal">
+    <h2>招贤得士 ✦</h2>
+    ${img(m.portrait,"rc-face")}
+    <div class="rc-name">${m.name}<span class="m-pers">${m.personality}</span></div>
+    <div class="rc-stats">
+      <span>文才 <b>${m.civ}</b></span><span>武略 <b>${m.mil}</b></span>
+      <span>忠诚 <b>${Math.round(m.loyalty)}</b></span><span>野心 <b>${Math.round(m.ambition)}</b></span>
+    </div>
+    <p class="rc-tip">已入朝待命，可于朝堂授其要职。</p>
+    <div style="text-align:center;margin-top:14px"><button class="btn btn-primary" id="rc-ok">纳 入 朝 堂</button></div>
+  </div>`);
+  const ok=$("rc-ok"); if(ok) ok.onclick=closeModal;
+}
+
+/* ---------- 选秀纳妃揭示 ---------- */
+function showSelect(c){
+  openModal(`<div class="recruit-reveal">
+    <h2>选秀采选 ✦</h2>
+    ${img(c.portrait,"rc-face")}
+    <div class="rc-name">${c.name}<span class="m-pers">${c.personality}</span></div>
+    <div class="rc-stats">
+      <span>美貌 <b>${c.beauty}</b></span><span>位分 <b>${RANKS[c.rank]}</b></span><span>芳龄 <b>${c.age}</b></span>
+    </div>
+    <p class="rc-tip">已纳入后宫，可临幸以开枝散叶、或晋其位分。</p>
+    <div style="text-align:center;margin-top:14px"><button class="btn btn-primary" id="rc-ok">迎 入 后 宫</button></div>
+  </div>`);
+  const ok=$("rc-ok"); if(ok) ok.onclick=closeModal;
+}
+
 /* ---------- 通用弹窗 ---------- */
 function openModal(html){ $("modal-content").innerHTML=html; $("modal").classList.add("open"); }
 function closeModal(){ $("modal").classList.remove("open"); }
@@ -253,7 +318,7 @@ function boot(){
 }
 
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
-  openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, boot};
+  openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect, boot};
 })();
 
 UI.boot();

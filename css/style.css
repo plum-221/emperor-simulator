@@ -183,7 +183,7 @@ b{color:var(--gold-br);font-weight:600;}
   background:linear-gradient(180deg,rgba(46,28,18,.7),rgba(25,13,7,.7));border:1px dashed var(--gold-dk);border-radius:11px;}
 
 /* 底部导航：雕花地栿 */
-.tabbar{display:flex;gap:7px;padding:9px 14px;max-width:1000px;width:100%;margin:0 auto;z-index:2;
+.tabbar{display:flex;gap:5px;padding:9px 10px;max-width:1000px;width:100%;margin:0 auto;z-index:2;
   background:linear-gradient(180deg,rgba(40,14,9,.92),rgba(58,20,12,.96));border-top:2px solid var(--gold);box-shadow:0 -4px 14px rgba(0,0,0,.5);}
 .tab{flex:1;font-family:var(--serif);cursor:pointer;color:var(--gold-br);border:1px solid var(--gold-dk);border-radius:10px;
   padding:7px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:18px;
@@ -229,6 +229,58 @@ b{color:var(--gold-br);font-weight:600;}
 .chip:hover{filter:brightness(1.2);}
 .chip.on{background:linear-gradient(180deg,var(--gold-br),var(--gold-dk));color:var(--ink);border-color:var(--gold);}
 .chip.danger:hover{background:linear-gradient(180deg,#c5362c,var(--red-deep));color:var(--gold-br);}
+.chip.warn:hover{background:linear-gradient(180deg,#b5701f,#6a3d10);color:var(--gold-br);}
+/* 招贤馆 bar */
+.recruit-bar{display:flex;align-items:center;gap:12px;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(74,47,24,.55),rgba(30,18,9,.55));border:1px solid var(--gold-dk);
+  border-radius:11px;padding:11px 14px;margin-bottom:12px;box-shadow:var(--bevel);}
+.rc-info b{color:var(--gold-br);font-size:15px;display:block;}
+.rc-info span{font-size:12px;opacity:.82;line-height:1.5;}
+.rc-btn{padding:9px 16px;font-size:15px;white-space:nowrap;}
+.rc-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.6);}
+/* 招贤抽卡结果 */
+.recruit-reveal{text-align:center;}
+.rc-face{width:150px;height:190px;margin:6px auto 10px;border-radius:6px;border:2px solid var(--gold);
+  object-fit:cover;object-position:top center;box-shadow:var(--shadow);animation:rcpop .45s ease;}
+@keyframes rcpop{from{transform:scale(.7) rotate(-3deg);opacity:0;}to{transform:none;opacity:1;}}
+.rc-name{font-size:22px;color:var(--red-deep);font-weight:600;}
+.rc-name .m-pers{margin-left:8px;font-size:13px;}
+.rc-stats{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0 4px;}
+.rc-stats span{background:linear-gradient(180deg,rgba(60,40,22,.4),rgba(30,18,9,.4));border:1px solid var(--gold-dk);
+  border-radius:8px;padding:5px 11px;font-size:13px;}
+.rc-stats b{color:var(--red);}
+.rc-tip{font-size:13px;opacity:.78;margin-top:8px;}
+/* 快进按钮 */
+.act-ff{display:block;width:100%;margin-top:10px;font-family:var(--serif);cursor:pointer;font-size:14px;
+  color:var(--gold-br);border:1px dashed var(--gold-dk);border-radius:11px;padding:9px;
+  background:linear-gradient(180deg,rgba(46,28,18,.55),rgba(25,13,7,.55));transition:filter .15s;}
+.act-ff:hover{filter:brightness(1.25);border-style:solid;}
+/* 皇嗣成长立绘（P6 AI 通用图，按成长段切换）*/
+.child-face{width:64px;height:80px;flex-shrink:0;object-fit:cover;object-position:top center;
+  border:2px solid var(--gold-dk);border-radius:10px;background:radial-gradient(circle at 40% 30%,#4a3416,#2a1c0c);
+  box-shadow:var(--bevel);}
+.child-face.noface{display:grid;place-items:center;font-size:34px;}
+/* 大事件横幅与卡片强调 */
+.ev-card.big{border-color:var(--red);box-shadow:0 0 0 1px var(--red-dk),0 10px 30px #c5362c33,var(--shadow);
+  animation:bigpulse 1.6s ease-in-out infinite alternate;}
+@keyframes bigpulse{from{box-shadow:0 0 0 1px var(--red-dk),0 6px 20px #c5362c22,var(--shadow);}
+  to{box-shadow:0 0 0 1px var(--red),0 10px 34px #c5362c55,var(--shadow);}}
+.ev-banner{margin:-6px -4px 12px;text-align:center;font-size:14px;letter-spacing:.22em;font-weight:600;
+  color:#ffe9c2;padding:7px;border-radius:8px;
+  background:linear-gradient(90deg,var(--red-dk),var(--red),var(--red-dk));border:1px solid var(--gold);
+  text-shadow:0 1px 3px #000;}
+/* ============ 准4X 大地图 ============ */
+.map-summary{text-align:center;font-size:13px;color:var(--gold-br);padding:2px 0 6px;}
+.map-summary b{font-size:16px;}
+.worldmap{width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--gold-dk);
+  box-shadow:var(--bevel);touch-action:manipulation;}
+.worldmap .rg:hover rect{filter:brightness(1.15);}
+.worldmap .rg:active{transform:scale(.98);transform-origin:center;}
+.region-card{margin-top:12px;border:1px solid var(--gold-dk);border-radius:11px;padding:11px 13px;
+  background:linear-gradient(180deg,rgba(60,40,22,.45),rgba(30,18,9,.45));box-shadow:var(--bevel);}
+.region-card .m-head{margin-bottom:5px;}
+.region-card .m-line{font-size:13px;opacity:.9;margin:3px 0;}
+.region-card .post-row{margin-top:9px;flex-wrap:wrap;}
 .army-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .army-grid div{background:linear-gradient(180deg,rgba(60,40,22,.5),rgba(30,18,9,.5));border:1px solid var(--gold-dk);border-radius:9px;padding:9px 11px;font-size:14px;box-shadow:var(--bevel);}
 .army-grid b{font-size:18px;}
