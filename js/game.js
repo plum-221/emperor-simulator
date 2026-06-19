@@ -60,6 +60,8 @@ const api = {
         generals:R.shuffle(M.generals).slice(4)
       },
       blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池
+      recruitPoints:30, shards:0, gachaPity:0,   // 招贤点 / 升级碎片 / 保底计数
+      weapons:[],   // 已得武器 id 列表（武库）
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
@@ -99,7 +101,8 @@ const api = {
       return EVENTS.find(e=>e.id==="ev_rebel_min");
     }
     if(!R.chance(22)) return null;                 // 多数时段无事（按时段触发，频率调低）
-    const cands=EVENTS.filter(e=>(e.weight||1)>0 && (!e.cond||e.cond(s)) && !(e.once&&s.flags["done_"+e.id]));
+    const ph=PHASES[s.nation.phase||0].key;
+    const cands=EVENTS.filter(e=>(e.weight||1)>0 && (!e.cond||e.cond(s)) && !(e.once&&s.flags["done_"+e.id]) && (!e.phase||e.phase===ph));
     if(!cands.length) return null;
     const tot=cands.reduce((a,e)=>a+(e.weight||1),0);
     let r=Math.random()*tot;
@@ -115,10 +118,18 @@ const api = {
     SFX.pick();
     this._bigChain = !!ev.big;          // 大事件标记，沿连锁传递到后续 showCard 卡片
     if(opt.effects) this.applyEffects(opt.effects);
+    // 关系涟漪（B4）：每个选择都牵动百官忠诚与后宫情绪。
+    // 显式 effects.loyalty/favor 由 applyEffects 处理；此处再叠加一层「由国计民生自动推导」的小幅涟漪。
+    const fx=opt.effects||{};
+    const loyR=R.clamp(Math.round(((fx.people||0)+(fx.prestige||0)+(fx.treasury||0)*0.4)/10),-2,2); // 善政则百官安、苛政离心
+    const favR=R.clamp(Math.round(((fx.charm||0)*2+(fx.health||0))/3),-2,2);                          // 修养/龙体影响后宫情绪
+    if(loyR) this.shiftAllLoyalty(loyR);
+    if(favR) this.allConsortFavor(favR);
     if(ev.once) s.flags["done_"+ev.id]=true;
     s.pendingEvent=null;
     this.logMsg(`【${typeof ev.title==="function"?ev.title(s):ev.title}】${opt.text}`);
     if(opt.do) opt.do(this);          // 可能再次 showCard（如战报）
+    if(loyR||favR){ const parts=[]; if(loyR)parts.push(`百官忠诚 ${loyR>0?"+":""}${loyR}`); if(favR)parts.push(`后宫情绪 ${favR>0?"+":""}${favR}`); this.toast(parts.join("、")); }
     this.afterEvent();
   },
 
@@ -135,31 +146,33 @@ const api = {
      按天后行动频率剧增，故五维成长改为「边际递减」：属性越高、单次涨得越少，
      自然趋近上限而不会一两月顶到 100。grow(cur,base) 见文件顶部。 */
   ACTIONS:{
-    govern:{name:"勤政",icon:ICONS.govern,hint:"批阅奏章，理政安民",run(s){
+    govern:{name:"勤政",icon:ICONS.govern,hint:"批阅奏章，理政安民（晨/午）",phases:["morn","noon"],run(s){
       const g=s.emperor.politics, dt=Math.max(1,Math.round(g/50));
       s.nation.treasury+=dt; if(R.chance(45))s.nation.people+=1;
+      s.recruitPoints=(s.recruitPoints||0)+1;   // 勤政纳贤：积累招贤点
       s.emperor.health-=1; s.emperor.exp+=1;
-      return `勤勉理政，国库 +${dt}。`;}},
-    read:{name:"读书",icon:ICONS.read,hint:"研读经史，增长智略",run(s){
+      return `勤勉理政，国库 +${dt}，招贤点 +1。`;}},
+    read:{name:"读书",icon:ICONS.read,hint:"研读经史，增长智略（晨）",phases:["morn"],run(s){
       const b=s.emperor.int; s.emperor.int=grow(b,9); if(R.chance(40))s.emperor.politics=grow(s.emperor.politics,5);
       s.emperor.health-=1;
       return `潜心向学，智力 +${s.emperor.int-b}。`;}},
-    train:{name:"习武",icon:ICONS.train,hint:"演练武艺，强身健体",run(s){
+    train:{name:"习武",icon:ICONS.train,hint:"演练武艺，强身健体（晨/午）",phases:["morn","noon"],run(s){
       const b=s.emperor.martial; s.emperor.martial=grow(b,9); if(R.chance(30))s.emperor.health+=1;
       return `勤练弓马，武力 +${s.emperor.martial-b}。`;}},
-    cultivate:{name:"养性",icon:ICONS.cultivate,hint:"陶冶情操，增益魅力",run(s){
+    audience:{name:"召见群臣",icon:ICONS.audience,hint:"召见大臣，笼络忠心（午）",phases:["noon"],select:"court"},
+    cultivate:{name:"养性",icon:ICONS.cultivate,hint:"陶冶情操，增益魅力（夜）",phases:["eve"],run(s){
       const b=s.emperor.charm; s.emperor.charm=grow(b,9); if(R.chance(30))s.emperor.health+=1;
       return `怡情养性，魅力 +${s.emperor.charm-b}。`;}},
-    rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康",run(s){
+    visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶（仅夜）",phases:["eve"],select:"harem"},
+    rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康（夜）",phases:["eve"],run(s){
       s.emperor.health+=R.i(3,5);
-      return "静心休养，龙体渐安。";}},
-    visit:{name:"临幸后宫",icon:ICONS.visit,hint:"宠幸嫔妃，开枝散叶",select:"harem"},
-    audience:{name:"召见群臣",icon:ICONS.audience,hint:"召见大臣，笼络忠心",select:"court"}
+      return "静心休养，龙体渐安。";}}
   },
 
   doAction(type){
     const s=this.s; if(s.actedThisTurn||s.pendingEvent) return;
     const a=this.ACTIONS[type];
+    if(a.phases && !a.phases.includes(PHASES[s.nation.phase||0].key)){ this.toast(`此事宜在${a.phases.map(k=>PHASES.find(p=>p.key===k).name).join("/")}行`); return; }
     if(a.select){ UI.openPanel(a.select,{selectAction:type}); return; }
     const msg=a.run(s); s.actedThisTurn=true;
     this.clampAll(); SFX.good(); this.toast(msg);
@@ -215,25 +228,78 @@ const api = {
     this.logMsg(`罢免 ${m.name}，逐出朝堂。`);
     UI.renderPanel("court"); this.renderTurn();
   },
-  // 招贤馆：抽卡式招募。去重（池内本就唯一）+ 排除黑名单（已罢免/处死者）
+  /* 招贤抽卡：消耗「招贤点」单池抽卡 + 高/中/低档 + 保底 + 重复转碎片。
+     排除黑名单（罢免/处死者永不再现）；抽中已在朝者→化碎片（不出现两个同人）。*/
   recruitDraw(){
-    const s=this.s, n=s.nation;
-    if(n.treasury < RECRUIT_COST){ this.toast("国库不足，无以招贤"); UI.renderPanel("court"); return null; }
-    let idx=-1;
-    for(let i=0;i<s.pool.ministers.length;i++){
-      if(!s.blacklist.includes(s.pool.ministers[i].file)){ idx=i; break; }
+    const s=this.s;
+    const cost = s.recruitVoucher ? Math.ceil(GACHA.cost/2) : GACHA.cost;   // 低价券：半价一次
+    if(s.recruitPoints < cost){ this.toast(`招贤点不足（需 ${cost}）`); UI.renderPanel("court"); return null; }
+    const M=this.manifest||{};
+    const roster=[].concat((M.ministers||[]).map(x=>({src:x,kind:"civil"})),
+                           (M.generals||[]).map(x=>({src:x,kind:"martial"})))
+      .filter(e=>!s.blacklist.includes(e.src.file));
+    if(!roster.length){ this.toast("天下贤才已绝"); return null; }
+    s.recruitPoints-=cost; if(s.recruitVoucher) s.recruitVoucher=false;
+    const tierKey=rollTier(s.gachaPity||0), tier=GACHA.tiers[tierKey];
+    s.gachaPity = tierKey==="high" ? 0 : (s.gachaPity||0)+1;
+    const pick=R.pick(roster);
+    if(s.ministers.some(m=>m.portrait===pick.src.file)){   // 重复 → 碎片
+      s.shards=(s.shards||0)+tier.shard; SFX.pick();
+      this.toast(`【${tier.name}${tier.star}】抽得已仕之贤，化为碎片 +${tier.shard}（共 ${s.shards}）`);
+      UI.renderPanel("court"); this.renderTurn();
+      return {dupe:true,tierKey,shard:tier.shard};
     }
-    if(idx<0){ this.toast("天下贤才已尽入彀中"); return null; }
-    n.treasury-=RECRUIT_COST;
-    const src=s.pool.ministers.splice(idx,1)[0];
-    const m=buildMinisters([src],1)[0];
-    s.ministers.push(m);
-    SFX.gong();
-    this.logMsg(`招贤馆纳新贤 ${m.name}（文才${m.civ}·武略${m.mil}）。`);
-    this.clampNation();
+    const m=(pick.kind==="martial"?buildGenerals:buildMinisters)([pick.src],1,tierKey)[0];
+    if(m.kind==="martial"){ m.mil=R.clamp(m.mil+tier.statBonus); m.civ=R.clamp(m.civ+Math.round(tier.statBonus/2)); }
+    else { m.civ=R.clamp(m.civ+tier.statBonus); m.mil=R.clamp(m.mil+Math.round(tier.statBonus/2)); }
+    s.ministers.push(m); SFX.gong();
+    this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.name}（文${m.civ}·武${m.mil}）。`);
     UI.showRecruit(m);
     UI.renderPanel("court"); this.renderTurn();
     return m;
+  },
+  earnPoints(n,reason){ const s=this.s; if(n<=0)return; s.recruitPoints=(s.recruitPoints||0)+n; if(reason)this.logMsg(`${reason}，招贤点 +${n}。`); },
+  /* 武库抽卡：消耗招贤点抽一件武器，已有则化碎片 */
+  weaponDraw(){
+    const s=this.s; const cost=GACHA.cost;
+    if((s.recruitPoints||0)<cost){ this.toast(`招贤点不足（需 ${cost}）`); UI.renderPanel("court"); return null; }
+    s.recruitPoints-=cost;
+    const w=rollWeapon(); const tg=GACHA.tiers[w.tier];
+    if(!s.weapons) s.weapons=[];
+    if(s.weapons.includes(w.id)){   // 重复 → 碎片
+      s.shards=(s.shards||0)+tg.shard; SFX.pick();
+      this.toast(`【${tg.name}${tg.star}】${w.name} 已在武库，化碎片 +${tg.shard}（共 ${s.shards}）`);
+      UI.renderPanel("court"); return {dupe:true,wid:w.id};
+    }
+    s.weapons.push(w.id); SFX.gong();
+    this.logMsg(`武库铸成【${tg.name}${tg.star}】${w.name}（${w.stat==="mil"?"武略":"文才"} +${w.bonus}）。`);
+    this.toast(`得【${tg.name}${tg.star}】${w.name}！可佩于将相。`);
+    UI.renderPanel("court"); return w;
+  },
+  /* 装备武器（wid="" 卸下）。武器同时只能在一人身上；换装自动转移、增减对应属性 */
+  equipWeapon(mid,wid){
+    const s=this.s, m=s.ministers.find(x=>x.id===mid); if(!m) return;
+    // 先卸下 m 当前武器
+    if(m.weapon){ const om=weaponById(m.weapon); if(om) m[om.stat]=R.clamp(m[om.stat]-om.bonus); m.weapon=null; }
+    if(!wid){ this.toast(`${m.name} 已卸兵刃`); UI.renderPanel("court"); return; }
+    const w=weaponById(wid); if(!w) return;
+    // 该武器若在他人身上，先夺下
+    const holder=s.ministers.find(x=>x.weapon===wid);
+    if(holder){ const ow=weaponById(holder.weapon); if(ow) holder[ow.stat]=R.clamp(holder[ow.stat]-ow.bonus); holder.weapon=null; }
+    m.weapon=wid; m[w.stat]=R.clamp(m[w.stat]+w.bonus);
+    SFX.good(); this.toast(`${m.name} 佩 ${w.name}，${w.stat==="mil"?"武略":"文才"} +${w.bonus}`);
+    UI.renderPanel("court");
+  },
+  grantVoucher(){ this.s.recruitVoucher=true; this.toast("获一次「半价招贤」良机！"); },
+  // 碎片升级：消耗碎片提升一名官员主属性（武将提武略、文官提文才，边际递减）
+  upgradeMinister(id){
+    const s=this.s, m=s.ministers.find(x=>x.id===id); if(!m) return;
+    if((s.shards||0)<UPGRADE_COST){ this.toast(`碎片不足（需 ${UPGRADE_COST}）`); return; }
+    s.shards-=UPGRADE_COST;
+    const key = m.kind==="martial" ? "mil" : "civ";
+    const b=m[key]; m[key]=grow(b, 12);
+    SFX.good(); this.toast(`${m.name} ${key==="mil"?"武略":"文才"} +${m[key]-b}（碎片余 ${s.shards}）`);
+    UI.renderPanel("court");
   },
   promoteConsort(id){
     const s=this.s, c=s.consorts.find(x=>x.id===id); if(!c)return;
@@ -309,15 +375,27 @@ const api = {
     let our=n.military*0.5;
     if(type==="emperor") our+=s.emperor.martial+8;
     else our+=(marshal?marshal.mil:25);
-    const myRoll=our+R.i(-15,30), enRoll=ePow+R.i(-15,25);
-    const win=myRoll>=enRoll;
+    // 可操作战斗界面（多回合·战术博弈）：交由 BattleSys 接管，结束回调 resolveWar
+    if(typeof BattleSys!=="undefined" && BattleSys.open){
+      const leader = type==="emperor" ? `${s.emperor.name}（御驾亲征）` : (marshal?`${marshal.name}（武略${marshal.mil}）`:"偏将临阵");
+      BattleSys.open({ type, enemy, ourPow:our, enemyPow:ePow, leader,
+        onResolve:(res)=>this.resolveWar(type,res,enemy,marshal) });
+      return;
+    }
+    // 回退：无 BattleSys 时即时判定（保留旧逻辑，便于无头测试）
+    const win=(our+R.i(-15,30))>=(ePow+R.i(-15,25));
+    this.resolveWar(type,{win,ourHP:win?60:8,rounds:0},enemy,marshal);
+  },
+  /* 战后结算：复用既有开疆/丧师数值，按战损（ourHP 余量）微调战果 */
+  resolveWar(type,res,enemy,marshal){
+    const s=this.s, n=s.nation; const win=!!res.win; const decisive=(res.ourHP||0)>=60;
     let title,text,role="general";
     if(win){
-      const land=R.i(3,8),spoil=R.i(6,16),loss=R.i(5,12);
+      const land=R.i(3,8)+(decisive?R.i(1,4):0), spoil=R.i(6,16)+Math.round((res.ourHP||40)/12), loss=R.i(5,12);
       n.land=R.clamp(n.land+land); n.treasury=R.clamp(n.treasury+spoil);
-      n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)); n.military=R.clamp(n.military-loss);
+      n.prestige=R.clamp(n.prestige+(type==="emperor"?12:8)+(decisive?4:0)); n.military=R.clamp(n.military-loss);
       n.people=R.clamp(n.people+4);
-      title="大捷！"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，斩获无数！疆域 +${land}，国库 +${spoil}，威望大涨。`;
+      title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
       if(marshal)marshal.loyalty=R.clamp(marshal.loyalty+4);
       SFX.gong();
     }else{
@@ -329,10 +407,11 @@ const api = {
       if(type==="emperor" && n.military<20 && R.chance(35)){
         this.showCard({title:"血染沙场",role:"general",text:"乱军之中，陛下身中流矢……",
           choices:[{text:"（天命如此）",do:G=>G.emperorDies("battle")}]});
-        return;
+        this.afterEvent(); return;
       }
     }
     this.showCard({title,text,role,choices:[{text:"继续",do:()=>{}}]});
+    this.afterEvent();
   },
 
   /* ---------- 快进：连推时段，遇事件 / 月末 / 国丧 即停 ---------- */
@@ -407,6 +486,8 @@ const api = {
     n.food   += n.land/24 - n.people/24;        // 地养粮、民耗粮（人多则粮紧）
     n.military-= n.military/28;                  // 兵员月损耗（老弱逃亡），无大将军则渐衰
     n.people  -= n.people/120;                   // 民生自然消长（迁徙/老病），靠治绩维系
+    // 月度治理产出招贤点：民心越盛、贤才越愿来投（御史在职额外揽才）
+    s.recruitPoints=(s.recruitPoints||0)+ 1 + (n.people>=60?1:0) + (s.ministers.some(m=>m.post==="censor")?1:0);
     // 拮据反噬
     if(n.treasury<15){ n.people-=4; this.shiftAllLoyalty(-3); }
     if(n.food<12){ n.people-=5; }
@@ -515,6 +596,9 @@ const api = {
     for(const k in fx){
       if(NK.includes(k)) s.nation[k]+=fx[k];
       else if(EK.includes(k)) s.emperor[k]+=fx[k];
+      else if(k==="loyalty") this.shiftAllLoyalty(fx[k]);   // 关系增量：百官忠诚（B4 显式）
+      else if(k==="favor") this.allConsortFavor(fx[k]);     // 关系增量：后宫好感（B4 显式）
+      else if(k==="points") s.recruitPoints=(s.recruitPoints||0)+fx[k];  // 招贤点（B2 事件产出）
     }
     this.clampAll();
   },

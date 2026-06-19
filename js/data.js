@@ -82,10 +82,42 @@ const PHASES = [
 ];
 const MONTH_DAYS = 30;   // 每月天数（统一 30，便于结算）
 
-/* 招贤馆：每次求贤的花费（抽卡式招募） */
-const RECRUIT_COST = 12;
 /* 选秀：每次纳新嫔妃的花费 */
 const SELECT_COST = 10;
+
+/* ---------- 招贤抽卡（点数 + 高/中/低档 + 保底 + 重复转碎片）---------- */
+const GACHA = {
+  cost: 10,        // 每抽消耗「招贤点」
+  pity: 10,        // 保底：连续未出大才满 N 抽，下一抽必出高档
+  tiers: {
+    low:  {key:"low", name:"庸才", star:"★",   p:0.60, statBonus:0,  shard:1, color:"#9a9c8f"},
+    mid:  {key:"mid", name:"良才", star:"★★",  p:0.30, statBonus:10, shard:3, color:"#6ca9e0"},
+    high: {key:"high",name:"大才", star:"★★★", p:0.10, statBonus:22, shard:6, color:"#e0b24a"}
+  }
+};
+const TIER_KEYS = ["low","mid","high"];
+function rollTier(pity){
+  if(pity>=GACHA.pity) return "high";
+  const r=Math.random();
+  if(r < GACHA.tiers.high.p) return "high";
+  if(r < GACHA.tiers.high.p + GACHA.tiers.mid.p) return "mid";
+  return "low";
+}
+const UPGRADE_COST = 5;   // 每次以碎片提升一名官员主属性所耗碎片
+
+/* ---------- 武器系统：独立卡牌池，装备于角色提对应能力 ---------- */
+const WEAPONS = [
+  {id:"tieqiang", name:"铁枪",     tier:"low",  stat:"mil", bonus:5,  img:"assets/weapons/tieqiang.png",  desc:"寻常铁枪，聊胜于无"},
+  {id:"langhao",  name:"狼毫笔",   tier:"low",  stat:"civ", bonus:5,  img:"assets/weapons/langhao.png",   desc:"文房利器，落笔成章"},
+  {id:"qilingong",name:"麒麟弓",   tier:"mid",  stat:"mil", bonus:12, img:"assets/weapons/qilingong.png", desc:"良弓在手，百步穿杨"},
+  {id:"liutao",   name:"六韬兵书", tier:"mid",  stat:"civ", bonus:12, img:"assets/weapons/liutao.png",    desc:"运筹帷幄，决胜千里"},
+  {id:"yuruyi",   name:"玉如意",   tier:"mid",  stat:"civ", bonus:10, img:"assets/weapons/yuruyi.png",    desc:"祥瑞之器，言出法随"},
+  {id:"fangtian", name:"方天画戟", tier:"high", stat:"mil", bonus:22, img:"assets/weapons/fangtian.png",  desc:"万人敌之兵，所向披靡"},
+  {id:"qinggang", name:"青釭剑",   tier:"high", stat:"mil", bonus:20, img:"assets/weapons/qinggang.png",  desc:"削铁如泥，吹毛断发"},
+  {id:"yuxi",     name:"传国玉玺", tier:"high", stat:"civ", bonus:22, img:"assets/weapons/yuxi.png",      desc:"受命于天，既寿永昌"}
+];
+function weaponById(id){ return WEAPONS.find(w=>w.id===id); }
+function rollWeapon(){ const t=rollTier(0); const pool=WEAPONS.filter(w=>w.tier===t); return R.pick(pool.length?pool:WEAPONS); }
 
 /* 敌国/番邦 */
 const ENEMIES = ["北狄","西羌","东瀛","南诏","匈奴","突厥","契丹","吐蕃"];
@@ -123,7 +155,7 @@ const GIVEN_M = "承乾景琰昭珩瑞渊弘睿晟煜钰熙泽宸曜钧澈".spli
 const GIVEN_F = "玥婉宁妧琬瑶昭华婵柔嫣媛清菀绮".split("");
 
 /* ---------- 由 manifest 构建角色 ---------- */
-function buildMinisters(list, n){
+function buildMinisters(list, n, tier){
   const sel = R.shuffle(list).slice(0,n);
   return sel.map((m,idx)=>({
     id:"min"+idx+"_"+Date.now()%9999+idx,
@@ -131,10 +163,11 @@ function buildMinisters(list, n){
     civ:R.i(45,95), mil:R.i(10,55),
     loyalty:R.i(55,88), ambition:R.i(5,45),
     personality:R.pick(PERS_KEYS),
-    post:null, age:R.i(28,60), reward:0
+    post:null, age:R.i(28,60), reward:0,
+    tier:tier||"mid", kind:"civil", weapon:null
   }));
 }
-function buildGenerals(list, n){
+function buildGenerals(list, n, tier){
   const sel = R.shuffle(list).slice(0,n);
   return sel.map((m,idx)=>({
     id:"gen"+idx+"_"+Date.now()%9999+idx,
@@ -142,7 +175,8 @@ function buildGenerals(list, n){
     civ:R.i(20,55), mil:R.i(55,96),
     loyalty:R.i(55,90), ambition:R.i(10,55),
     personality:R.pick(PERS_KEYS),
-    post:null, age:R.i(30,58), reward:0
+    post:null, age:R.i(30,58), reward:0,
+    tier:tier||"mid", kind:"martial", weapon:null
   }));
 }
 function buildConsorts(list, n){
@@ -265,9 +299,9 @@ const EVENTS = [
  {id:"ev_exam",cat:"政务",role:"chancellor",weight:2,title:"开科取士",cond:s=>s.nation.year>=2&&s.nation.year%3===0,
   text:"陛下，三年一度的会试已毕，天下英才汇聚京城，正待陛下钦点。",
   choices:[
-   {text:"亲自殿试，广纳贤才",effects:{people:+6,politics:+1},do:G=>G.recruit(3)},
-   {text:"循例放榜",effects:{people:+2},do:G=>G.recruit(2)},
-   {text:"鬻卖功名以充国库",effects:{treasury:+12,people:-8},do:G=>G.recruit(1)}]},
+   {text:"亲自殿试，广纳贤才",effects:{people:+6,politics:+1,points:+10}},
+   {text:"循例放榜",effects:{people:+2,points:+5}},
+   {text:"鬻卖功名以充国库",effects:{treasury:+12,people:-8,points:+2}}]},
 
  {id:"ev_exam_fraud",cat:"政务",role:"censor",weight:1,title:"科场舞弊",cond:s=>s.nation.year>=3,
   text:"陛下，本科会试惊现舞弊，主考收贿泄题，士子哗然！",
@@ -277,7 +311,7 @@ const EVENTS = [
    {text:"息事宁人",effects:{people:-10}}]},
 
  /* ——— 后宫 ——— */
- {id:"ev_harem_jealous",cat:"后宫",role:"consort",weight:2,title:"六宫争宠",cond:s=>s.consorts.length>=2,
+ {id:"ev_harem_jealous",cat:"后宫",role:"consort",weight:2,phase:"eve",title:"六宫争宠",cond:s=>s.consorts.length>=2,
   text:"陛下，近日后宫为争宠而明争暗斗，皇后劝陛下当雨露均沾，以安宫闱。",
   choices:[
    {text:"雨露均沾，安抚六宫",effects:{charm:+1},do:G=>G.allConsortFavor(+4)},
@@ -291,19 +325,19 @@ const EVENTS = [
    {text:"任人唯贤，恕难徇私",effects:{people:+6,politics:+1}}]},
 
  /* ——— 丹药 / 个人 ——— */
- {id:"ev_immortal",cat:"个人",role:"eunuch",weight:1,title:"方士献丹",cond:s=>s.emperor.age>=38,
+ {id:"ev_immortal",cat:"个人",role:"eunuch",weight:1,phase:"eve",title:"方士献丹",cond:s=>s.emperor.age>=38,
   text:"有方士进献金丹，言服之可延年益寿、长生不老。",
   choices:[
    {text:"日服金丹，求长生",effects:{health:+6},do:G=>{G.s.flags.pills=(G.s.flags.pills||0)+1;}},
    {text:"强身在己，逐其出宫",effects:{health:+2,people:+2}}]},
 
- {id:"ev_hunt",cat:"个人",role:"general",weight:2,title:"围猎演武",
+ {id:"ev_hunt",cat:"个人",role:"general",weight:2,phase:"noon",title:"围猎演武",
   text:"秋高马肥，群臣请陛下校猎西苑，既可演武，亦可怡情。",
   choices:[
    {text:"亲挽强弓，校猎演武",effects:{martial:+3,health:+2,prestige:+2}},
    {text:"国事为重，免了",effects:{politics:+1}}]},
 
- {id:"ev_study",cat:"个人",role:"chancellor",weight:2,title:"经筵讲读",
+ {id:"ev_study",cat:"个人",role:"chancellor",weight:2,phase:"morn",title:"经筵讲读",
   text:"翰林学士请陛下御经筵，讲读经史，以资治道。",
   choices:[
    {text:"潜心向学",effects:{int:+3,politics:+2,health:-1}},
@@ -313,7 +347,7 @@ const EVENTS = [
   text:"陛下微服出宫，见市井百态、民间疾苦……",
   choices:[
    {text:"体察民情，回宫即颁惠政",effects:{people:+8,treasury:-4,charm:+1}},
-   {text:"惩治当街恶霸",effects:{people:+6,prestige:+2}},
+   {text:"微访中访得草野遗贤",effects:{people:+3},do:G=>G.grantVoucher()},
    {text:"只当游乐，一笑而过",effects:{health:+2,people:-2}}]},
 
  /* ——— 经济 ——— */

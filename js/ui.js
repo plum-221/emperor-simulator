@@ -102,8 +102,9 @@ function renderActions(){
   const ff=`<button class="act-ff" id="btn-ff">⏩ 快进至下一事件 / 月末</button>`;
   if(s.actedThisTurn){ $("action-area").innerHTML=`<p class="act-hint">✔ 此时段已行一事，可「下一时段」</p>`+ff; }
   else{
+    const curPh=PHASES[s.nation.phase||0].key;
     $("action-area").innerHTML=`<div class="act-grid">`+
-      Object.keys(Game.ACTIONS).map(k=>{
+      Object.keys(Game.ACTIONS).filter(k=>{ const a=Game.ACTIONS[k]; return !a.phases||a.phases.includes(curPh); }).map(k=>{
         const a=Game.ACTIONS[k];
         return `<button class="act-btn" data-a="${k}" title="${a.hint}"><i>${a.icon}</i><span>${a.name}</span></button>`;
       }).join("")+`</div>`+ff;
@@ -128,26 +129,39 @@ function renderPanel(name){
   }
   else if(name==="court"){
     const selecting=panelOpts.selectAction==="audience";
+    const owned=(s.weapons||[]).map(weaponById).filter(Boolean);
     if(selecting) h+=`<p class="panel-tip">点击一位大臣以「召见」（消耗此时段行动）</p>`;
     else{
-      const left=s.pool.ministers.filter(p=>!s.blacklist.includes(p.file)).length;
+      const cost=s.recruitVoucher?Math.ceil(GACHA.cost/2):GACHA.cost;
+      const pity=s.gachaPity||0;
       h+=`<div class="recruit-bar">
-        <div class="rc-info"><b>招贤馆</b><span>耗国库 ${RECRUIT_COST}，抽募一位新贤（不重复·已罢免/处死者不再现）。可招 <b>${left}</b> 人</span></div>
-        <button class="btn btn-primary rc-btn" ${s.nation.treasury<RECRUIT_COST||left<=0?"disabled":""} onclick="Game.recruitDraw()">求 贤 ✦</button>
+        <div class="rc-info"><b>招贤馆</b><span>招贤点 <b>${s.recruitPoints||0}</b> · 碎片 <b>${s.shards||0}</b> · 保底 ${pity}/${GACHA.pity}${s.recruitVoucher?` · <em class="voucher">半价券✦</em>`:""}<br>抽中已仕之贤化碎片，碎片可精进文武。已罢免/处死者不再现。</span></div>
+        <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<cost?"disabled":""} onclick="Game.recruitDraw()">求贤 ✦ ${cost}点</button>
+      </div>
+      <div class="recruit-bar">
+        <div class="rc-info"><b>武库</b><span>已得武器 <b>${owned.length}</b>/${WEAPONS.length} · 抽中已有→碎片。佩于将相提其文/武。</span></div>
+        <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<GACHA.cost?"disabled":""} onclick="Game.weaponDraw()">铸兵 ⚔ ${GACHA.cost}点</button>
       </div>`;
+      if(owned.length) h+=`<div class="armory">`+owned.map(w=>{const tg=GACHA.tiers[w.tier];const on=s.ministers.find(x=>x.weapon===w.id);
+        return `<span class="wp-chip" style="border-color:${tg.color}" title="${w.desc}">${img(w.img,"wp-mini")}<b>${w.name}</b><i style="color:${tg.color}">${w.stat==="mil"?"武":"文"}+${w.bonus}</i>${on?`<u>${on.name}</u>`:`<u class="idle">未佩</u>`}</span>`;}).join("")+`</div>`;
     }
     h+=s.ministers.map(m=>{
       const pos=m.post?POSITIONS.find(p=>p.id===m.post).name:"（闲职）";
+      const tg=GACHA.tiers[m.tier||"mid"];
+      const upBtn=(s.shards||0)>=UPGRADE_COST?`<button class="chip" onclick="Game.upgradeMinister('${m.id}')">碎片精进 ✦${UPGRADE_COST}</button>`:"";
+      const wpSel=(!selecting&&owned.length)?`<select class="wp-sel" onchange="Game.equipWeapon('${m.id}',this.value)">
+        <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus}</option>`).join("")+`</select>`:"";
       const postBtns=selecting?"":`<div class="post-row">`+
         POSITIONS.map(p=>`<button class="chip ${m.post===p.id?"on":""}" onclick="Game.appoint('${m.id}','${m.post===p.id?"":p.id}')">${p.name}</button>`).join("")+
-        `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+
+        `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+wpSel+
         `<button class="chip warn" onclick="Game.dismissMinister('${m.id}')">罢免</button>`+
         `<button class="chip danger" onclick="Game.executeMinister('${m.id}')">处死</button></div>`;
+      const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">⚔${w.name}</span>`:"";})():"";
       return `<div class="m-card" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
         <div class="m-info">
-          <div class="m-head"><b>${m.name}</b><span class="m-post">${pos}</span><span class="m-pers">${m.personality}</span></div>
-          <div class="m-line">文才 ${m.civ} · 武略 ${m.mil}</div>
+          <div class="m-head"><b>${m.name}</b><span class="m-tier" style="color:${tg.color}" title="${tg.name}">${tg.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span></div>
+          <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil}</div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
         </div></div>`;
@@ -318,7 +332,8 @@ function boot(){
 }
 
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
-  openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect, boot};
+  openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
+  openModal, closeModal, boot};
 })();
 
 UI.boot();

@@ -219,6 +219,14 @@ b{color:var(--gold-br);font-weight:600;}
 .m-post{font-size:12px;background:linear-gradient(180deg,#5a3a1e,#34200f);border:1px solid var(--gold-dk);border-radius:10px;padding:1px 9px;color:var(--gold-br);}
 .m-post.heir{background:linear-gradient(180deg,#c5362c,var(--red-deep));color:var(--gold-br);border-color:var(--gold);}
 .m-pers{font-size:12px;opacity:.72;}
+.m-tier{font-size:13px;font-weight:700;letter-spacing:-1px;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.voucher{color:var(--gold-br);font-style:normal;font-weight:700;}
+.m-wp{font-size:11px;color:var(--gold-br);background:rgba(0,0,0,.25);border:1px solid var(--gold-dk);border-radius:8px;padding:1px 7px;}
+.armory{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px;}
+.wp-chip{display:flex;align-items:center;gap:6px;background:linear-gradient(180deg,#2a1c0c,#1a1206);border:1.5px solid var(--gold-dk);border-radius:10px;padding:4px 9px 4px 4px;font-size:12px;}
+.wp-chip b{color:var(--gold-br);} .wp-chip i{font-style:normal;font-weight:700;} .wp-chip u{text-decoration:none;font-size:11px;opacity:.8;} .wp-chip u.idle{opacity:.45;}
+.wp-mini{width:30px;height:30px;border-radius:6px;object-fit:cover;border:1px solid var(--gold-dk);}
+.wp-sel{font-size:12px;background:#2a1c0c;color:var(--gold-br);border:1px solid var(--gold-dk);border-radius:9px;padding:2px 6px;}
 .m-line{font-size:13px;opacity:.92;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .mini-bar{display:inline-block;width:54px;height:7px;background:rgba(0,0,0,.5);border-radius:4px;overflow:hidden;vertical-align:middle;box-shadow:inset 0 1px 2px rgba(0,0,0,.6);}
 .mini-bar i{display:block;height:100%;}
@@ -314,6 +322,43 @@ b{color:var(--gold-br);font-weight:600;}
 .end-desc{font-size:16px;line-height:1.85;opacity:.94;margin-bottom:24px;}
 .end-stats{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:26px;font-size:14px;}
 .end-stats b{color:var(--gold-br);font-size:22px;display:block;}
+
+/* ============ 可操作战斗界面（Phase 5） ============ */
+.battle{display:flex;flex-direction:column;gap:14px;}
+.bt-title{text-align:center;font-size:22px;color:var(--gold-br);letter-spacing:.3em;
+  filter:drop-shadow(0 1px 0 var(--red-dk));margin:0;}
+.bt-bars{display:flex;flex-direction:column;gap:10px;}
+.bt-side{display:flex;flex-direction:column;gap:4px;}
+.bt-lab{display:flex;justify-content:space-between;font-size:13px;color:var(--gold-br);}
+.bt-lab b{font-size:16px;}
+.bt-bar{height:16px;border:1.5px solid var(--gold-dk);border-radius:9px;overflow:hidden;
+  background:rgba(0,0,0,.4);box-shadow:var(--bevel);}
+.bt-bar i{display:block;height:100%;border-radius:8px;transition:width .45s cubic-bezier(.3,.8,.4,1);}
+.bt-bar.ours  i{background:linear-gradient(90deg,#4f8f5e,#6cc07f);}
+.bt-bar.enemy i{background:linear-gradient(90deg,#8a2820,#c0563a);}
+.bt-actions{min-height:96px;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+.bt-scout{text-align:center;font-size:13px;color:var(--gold-br);padding:6px 8px;margin-bottom:2px;
+  border:1px dashed rgba(217,182,95,.4);border-radius:8px;background:rgba(0,0,0,.22);}
+.bt-scout em{font-size:11px;opacity:.7;font-style:normal;}
+.bt-tip{text-align:center;font-size:12.5px;color:var(--paper-2);opacity:.85;}
+.bt-tactics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.bt-tac{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;cursor:pointer;
+  font-family:var(--serif);color:var(--paper);border:1.5px solid var(--gold-dk);border-radius:10px;
+  background:linear-gradient(180deg,rgba(70,40,22,.85),rgba(40,22,12,.9));box-shadow:var(--bevel);transition:.15s;}
+.bt-tac:hover{border-color:var(--gold-br);transform:translateY(-2px);box-shadow:var(--shadow);}
+.bt-tac i{font-size:22px;line-height:1;}
+.bt-tac b{font-size:14px;color:var(--gold-br);}
+.bt-tac u{font-size:10px;text-decoration:none;opacity:.7;}
+.bt-end{text-align:center;font-size:26px;letter-spacing:.4em;font-weight:600;}
+.bt-end.win{color:var(--gold-br);filter:drop-shadow(0 0 12px rgba(217,182,95,.5));}
+.bt-end.lose{color:#c0563a;}
+.bt-go{width:100%;}
+.bt-log{max-height:148px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;
+  padding:10px;border:1px solid var(--gold-dk);border-radius:9px;background:rgba(0,0,0,.28);}
+.bt-log-item{font-size:12.5px;line-height:1.5;color:var(--paper-2);
+  padding-bottom:5px;border-bottom:1px dashed rgba(217,182,95,.18);}
+.bt-log-item:last-child{border-bottom:none;}
+.bt-log-item.fresh{color:var(--gold-br);}
 
 /* ============ 响应式 ============ */
 @media (max-width:760px){
