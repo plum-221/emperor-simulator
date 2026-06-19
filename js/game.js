@@ -51,7 +51,7 @@ const api = {
         health:70, int:R.i(40,65), charm:R.i(40,65),
         martial:R.i(35,60), politics:R.i(40,65), exp:0},
       nation:{year:1, month:1, day:1, phase:0,
-        treasury:60, military:55, people:60, food:55, land:50, prestige:45},
+        treasury:30, military:35, people:45, food:38, land:40, prestige:25},  // 寒微起步：物资仅够开局，靠经营壮大
       ministers:roster,
       consorts:[],            // 后宫从 0 开始，逐位解锁攻略入宫
       romance:{},             // 攻略进度 {[tplId]:{aff,seen,done}}
@@ -62,7 +62,7 @@ const api = {
         generals:R.shuffle(M.generals).slice(4)
       },
       blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池
-      recruitPoints:30, shards:0, gachaPity:0,   // 招贤点 / 升级碎片 / 保底计数
+      recruitPoints:12, shards:0, gachaPity:0,   // 招贤点 / 升级碎片 / 保底计数（开局仅够一抽）
       talentPts:1, talents:[],                    // 帝王天赋点 / 已点天赋
       weapons:[],   // 已得武器 id 列表（武库）
       weaponLv:{},  // 武器强化等级 {[wid]:lv}
