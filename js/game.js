@@ -961,7 +961,7 @@ const api = {
 
   logMsg(t){ const s=this.s; s.log.unshift(`${s.nation.year}年${s.nation.month}月 · ${t}`); if(s.log.length>60)s.log.pop(); },
 
-  renderTurn(){ if(this._ff){ this.save(); return; } if(typeof QuestSys!=="undefined"&&this.s.quest) QuestSys.check(this.s); UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); this.save(); },
+  renderTurn(){ if(this._ff){ this.save(); return; } if(typeof QuestSys!=="undefined"&&this.s.quest) QuestSys.check(this.s); UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); if(typeof MusicSys!=="undefined") MusicSys.setScene(this.s.nation.phase===2?"night":"court"); this.save(); },
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },

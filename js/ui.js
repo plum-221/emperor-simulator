@@ -471,14 +471,20 @@ function openArchive(mode){
   openModal(h);
 }
 function openGameMenu(){
+  const mOn=(typeof MusicSys!=="undefined")&&MusicSys.isEnabled();
+  const sOn=(typeof SFX!=="undefined")&&!SFX.isMuted();
   openModal(`<h2>菜单</h2><div class="menu-list">
     <button class="btn btn-primary" onclick="UI.openArchive('save')">💾 存档 / 读档</button>
+    <button class="btn" onclick="UI.toggleMusic(this)">🎵 背景音乐：${mOn?"开":"关"}</button>
+    <button class="btn" onclick="UI.toggleSfx(this)">🔔 音效：${sOn?"开":"关"}</button>
     <button class="btn" onclick="UI.openHelp()">📜 玩法说明</button>
     <button class="btn" onclick="UI.backToTitle()">🏛 返回标题</button>
     <button class="btn ghost" onclick="UI.closeModal()">✖ 继续游戏</button>
-  </div><p class="panel-tip">※ 进度已自动保存，返回标题后可「继续上局」。</p>`);
+  </div><p class="panel-tip">※ 背景音乐为实时合成古风（五声音阶古筝），随昼夜战事变换。进度已自动保存。</p>`);
 }
-function backToTitle(){ closeModal(); show("title"); showRecord(); }
+function toggleMusic(btn){ if(typeof MusicSys==="undefined") return; const on=MusicSys.toggle(); if(btn) btn.textContent=`🎵 背景音乐：${on?"开":"关"}`; }
+function toggleSfx(btn){ if(typeof SFX==="undefined") return; const on=SFX.isMuted(); SFX.setMuted(!on); if(btn) btn.textContent=`🔔 音效：${!on?"关":"开"}`; }
+function backToTitle(){ closeModal(); show("title"); showRecord(); if(typeof MusicSys!=="undefined") MusicSys.setScene("title"); }
 
 /* ---------- 开场预加载：把所有立绘一次性载入浏览器缓存，进局后立绘即开即显 ---------- */
 function collectAssetUrls(){
@@ -512,11 +518,12 @@ function preloadAssets(done){
 function boot(){
   Game.init().then(()=>{
     showRecord();
+    if(typeof MusicSys!=="undefined") MusicSys.setScene("title");   // 标题曲（首次交互后起播）
     $("btn-start").onclick=()=>Game.newGame($("inp-dynasty").value.trim(),$("inp-name").value.trim(),$("inp-reign").value.trim());
     $("btn-continue").onclick=()=>{ if(!Game.load()) toast("无存档"); };
     $("btn-load").onclick=()=>openArchive("load");
     $("btn-help").onclick=openHelp;
-    $("btn-replay").onclick=()=>{ show("title"); showRecord(); };
+    $("btn-replay").onclick=()=>{ show("title"); showRecord(); if(typeof MusicSys!=="undefined") MusicSys.setScene("title"); };
     $("btn-next").onclick=()=>Game.nextTurn();
     $("btn-menu").onclick=openGameMenu;
     [...document.querySelectorAll(".tab[data-panel]")].forEach(t=>{
@@ -532,10 +539,11 @@ function boot(){
   });
 }
 
-return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
+return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.setScene("court"); }, renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
-  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, boot};
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy,
+  toggleMusic, toggleSfx, boot};
 })();
 
 UI.boot();
