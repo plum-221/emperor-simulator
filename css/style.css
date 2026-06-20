@@ -208,8 +208,15 @@ b{color:var(--gold-br);font-weight:600;}
 .panel-body{overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:11px;}
 .panel-tip{font-size:13px;opacity:.78;line-height:1.6;padding:2px;color:var(--gold-br);}
 
-.m-card{display:flex;gap:12px;border:1px solid var(--gold-dk);border-radius:12px;padding:10px;
+.m-card{display:flex;gap:12px;border:1.5px solid var(--gold-dk);border-radius:12px;padding:10px;
   background:linear-gradient(180deg,rgba(60,40,22,.5),rgba(30,18,9,.55));box-shadow:var(--bevel);}
+/* 稀有度边框（白绿蓝橙红）——红/橙顶级带光晕，由内联 border-color/box-shadow 着色 */
+.m-card.r5{background:linear-gradient(180deg,rgba(90,30,24,.5),rgba(40,14,9,.6));}
+.m-card.r4{background:linear-gradient(180deg,rgba(86,52,18,.5),rgba(40,22,9,.58));}
+.rc-frame{display:inline-block;border:3px solid var(--gold);border-radius:8px;margin:6px auto 8px;line-height:0;}
+.rc-frame .rc-face{margin:0;border:none;border-radius:5px;}
+.rc-rarity{font-size:20px;letter-spacing:.1em;margin-bottom:2px;}
+.rc-rarity span{font-size:13px;letter-spacing:.05em;}
 .m-card[onclick]{cursor:pointer;}
 .m-card[onclick]:hover{border-color:var(--gold);filter:brightness(1.12);}
 .m-face{width:64px;height:80px;border-radius:7px;border:2px solid var(--gold);object-fit:cover;object-position:top center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.4);}

@@ -70,7 +70,7 @@ function openImpeach(id){
 /* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 📜 打开） */
 function openCharacter(id){
   const s=Game.s; const m=s.ministers.find(x=>x.id===id||x.castId===id); if(!m) return;
-  const tg=GACHA.tiers[m.tier||"mid"];
+  const tg=(typeof rarityOf!=="undefined")?rarityOf(m):GACHA.tiers[m.tier||"mid"];
   const status=(cid)=>{
     if(s.ministers.some(x=>(x.castId||x.id)===cid)) return {t:"在朝",c:"st-in"};
     if((s.exiled||[]).includes(cid)) return {t:"已逐",c:"st-out"};
@@ -264,7 +264,7 @@ function renderPanel(name){
     }
     h+=s.ministers.map(m=>{
       const pos=m.post?POSITIONS.find(p=>p.id===m.post).name:"（闲职）";
-      const tg=GACHA.tiers[m.tier||"mid"];
+      const rar=(typeof rarityOf!=="undefined")?rarityOf(m):{color:"#cfcfc4",star:"★",name:""};
       const upBtn=(s.shards||0)>=UPGRADE_COST?`<button class="chip" onclick="Game.upgradeMinister('${m.id}')">碎片精进 ✦${UPGRADE_COST}</button>`:"";
       const canBk=(m.level||1)>=5 && (m.tier||"low")!=="high";
       const bkBtn=selecting?"":`<button class="chip ${canBk&&(s.shards||0)>=8?"gold":""}" ${canBk?"":"disabled"} onclick="Game.breakthrough('${m.id}')" title="Lv5且非满星可突破·耗碎片8">突破 ⤴${canBk?" ✦8":""}</button>`;
@@ -276,10 +276,10 @@ function renderPanel(name){
         `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+bkBtn+wpSel+
         `<button class="chip ${nCharges?'danger':'warn'}" onclick="UI.openImpeach('${m.id}')" title="问罪：依密谍司查得之罪证罢黜或诛戮">⚖ 问罪${nCharges?` <em class="chg">${nCharges}</em>`:""}</button></div>`;
       const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">⚔${w.name}</span>`:"";})():"";
-      return `<div class="m-card" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
+      return `<div class="m-card r${rar.r||1}" style="border-color:${rar.color};box-shadow:0 0 0 1px ${rar.color}${(rar.r||1)>=4?`,0 0 12px ${rar.glow}`:""}" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
         <div class="m-info">
-          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${tg.color}" title="${tg.name}">${tg.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">📜</button></div>
+          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${rar.color}" title="${rar.name}">${rar.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">📜</button></div>
           <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil} <span class="m-lv">Lv${m.level||1}</span><span class="m-exp">${m.exp||0}/${(m.level||1)*10}</span></div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
@@ -429,9 +429,11 @@ function showEnd(e,stat){
 
 /* ---------- 招贤抽卡结果 ---------- */
 function showRecruit(m){
-  openModal(`<div class="recruit-reveal">
+  const rar=(typeof rarityOf!=="undefined")?rarityOf(m):{color:"#cfcfc4",star:"★",name:""};
+  openModal(`<div class="recruit-reveal r${rar.r||1}">
     <h2>招贤得士 ✦</h2>
-    ${img(m.portrait,"rc-face")}
+    <div class="rc-frame" style="border-color:${rar.color};box-shadow:0 0 18px ${rar.glow||"transparent"}">${img(m.portrait,"rc-face")}</div>
+    <div class="rc-rarity" style="color:${rar.color}">${rar.star} <span>${rar.name}${m.title?" · "+m.title:""}</span></div>
     <div class="rc-name">${m.name}<span class="m-pers">${m.personality}</span></div>
     <div class="rc-stats">
       <span>文才 <b>${m.civ}</b></span><span>武略 <b>${m.mil}</b></span>

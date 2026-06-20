@@ -130,6 +130,29 @@ const ROSTER = [
     rel:[] }
 ];
 
+/* 稀有度 5 级（白绿蓝橙红·从低到高）——边框/星数体现人物分量，胜过纯星数 */
+const RARITY = [
+  {r:1, name:"庸",   star:"★",     color:"#cfcfc4", glow:"rgba(190,190,176,.0)"},  // 白
+  {r:2, name:"良",   star:"★★",    color:"#6fc46f", glow:"rgba(90,180,90,.35)"},   // 绿
+  {r:3, name:"上",   star:"★★★",   color:"#5a9fe0", glow:"rgba(74,143,214,.45)"},  // 蓝
+  {r:4, name:"杰",   star:"★★★★",  color:"#e8943a", glow:"rgba(224,140,50,.6)"},   // 橙
+  {r:5, name:"绝世", star:"★★★★★", color:"#e0443a", glow:"rgba(224,60,50,.7)"}     // 红
+];
+/* 16 人稀有度定级（按文武分量/全局地位） */
+const RARITY_OF = {
+  c_chancellor:5, m_marshal:5,                       // 红·绝世：丞相、大将军 两根擎天柱
+  c_finance:4, m_piaoqi:4, c_censor:4,               // 橙·杰：度支、骠骑、御史
+  m_zhenbei:3, m_guard:3, c_scholar:3, c_spymaster:3,// 蓝·上：镇北、羽林、翰林、密谍提督
+  c_personnel:2, c_kin:2, m_huben:2, m_navy:2, m_jinguo:2, // 绿·良
+  c_remonstrant:1, m_vanguard:1                      // 白·庸：新进谏议、先锋
+};
+/* 取人物稀有度（旧随机臣无 rarity → 按 tier 退化） */
+function rarityOf(m){
+  let r = m && m.rarity;
+  if(!r){ const t=m&&m.tier; r = t==="high"?5 : t==="mid"?3 : 1; }
+  return RARITY[Math.max(1,Math.min(5,r))-1];
+}
+
 /* 人物 → 固有官职（官职即身份，一人一职·登朝自动就位） */
 const POST_OF = {
   c_chancellor:"chancellor", c_finance:"finance", c_censor:"censor", c_scholar:"academy",
@@ -149,6 +172,7 @@ function makeFromCast(c){
     id:c.id, castId:c.id, name:c.name, title:c.title||"", portrait:c.portrait,
     civ:c.base.civ, mil:c.base.mil, loyalty:c.base.loyalty, ambition:c.base.ambition,
     personality:c.personality, post:POST_OF[c.id]||null, age:c.base.age, reward:0,   // 登朝即就其固有官职
+    rarity:RARITY_OF[c.id]||3,
     tier:c.tier, kind:c.kind, weapon:null, level:1, exp:0,
     story:c.story, rel:c.rel||[]
   };
@@ -166,7 +190,7 @@ function recruitablePool(s){
 }
 
 if(typeof globalThis!=="undefined"){
-  globalThis.ROSTER=ROSTER; globalThis.RELTYPE=RELTYPE;
+  globalThis.ROSTER=ROSTER; globalThis.RELTYPE=RELTYPE; globalThis.RARITY=RARITY; globalThis.rarityOf=rarityOf;
   globalThis.castById=castById; globalThis.castName=castName;
   globalThis.makeFromCast=makeFromCast; globalThis.startingCast=startingCast;
   globalThis.recruitablePool=recruitablePool;
