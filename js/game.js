@@ -227,7 +227,9 @@ const api = {
     const s=this.s, m=s.ministers.find(x=>x.id===id); if(!m)return;
     if(s.nation.treasury<8){ this.toast("国库不足，无以行赏"); return; }
     s.nation.treasury-=8; m.loyalty=R.clamp(m.loyalty+R.i(8,15)); m.reward=3;
-    SFX.good(); this.toast(`赏赐 ${m.name}，其感恩戴德。`); UI.renderPanel("court"); this.renderTurn();
+    const aff=this.relRipple(m,"reward");
+    SFX.good(); this.toast(`赏赐 ${m.name}，其感恩戴德。`); this._rippleToast(m,"reward",aff);
+    UI.renderPanel("court"); this.renderTurn();
   },
   executeMinister(id){
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
@@ -235,8 +237,10 @@ const api = {
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
     s.nation.people=R.clamp(s.nation.people-3); this.shiftAllLoyalty(-3);
+    const aff=this.relRipple(m,"punish");
     this.checkRomanceBreak(post);
-    SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); UI.renderPanel("court"); this.renderTurn();
+    SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); this._rippleToast(m,"punish",aff);
+    UI.renderPanel("court"); this.renderTurn();
   },
   // 罢免：非致命，逐出朝堂、永不录用（进黑名单），惩罚轻于处死
   dismissMinister(id){
@@ -245,8 +249,9 @@ const api = {
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
     this.shiftAllLoyalty(-1);
+    const aff=this.relRipple(m,"punish");
     this.checkRomanceBreak(post);
-    SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`);
+    SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`); this._rippleToast(m,"punish",aff);
     this.logMsg(`罢免 ${m.name}，逐出朝堂。`);
     UI.renderPanel("court"); this.renderTurn();
   },
@@ -334,8 +339,8 @@ const api = {
     const m=s.ministers[i], post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait&&!s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     if(m.castId&&!(s.exiled||[]).includes(m.castId)) (s.exiled=s.exiled||[]).push(m.castId);
-    this.shiftAllLoyalty(-2); this.checkRomanceBreak(post);
-    SFX.bad(); this.toast(`先发制人，${m.name} 已下狱拿问，逆谋消弭。`);
+    this.shiftAllLoyalty(-2); const aff=this.relRipple(m,"punish"); this.checkRomanceBreak(post);
+    SFX.bad(); this.toast(`先发制人，${m.name} 已下狱拿问，逆谋消弭。`); this._rippleToast(m,"punish",aff);
     this.logMsg(`密谍司拿问 ${m.name}，其党羽星散。`);
     UI.closeModal(); UI.renderPanel("court"); this.renderTurn();
   },
@@ -592,6 +597,41 @@ const api = {
 
   /* ---------- 事件 do() 可调用的 API ---------- */
   shiftAllLoyalty(d){ this.s.ministers.forEach(m=>m.loyalty=R.clamp(m.loyalty+d)); },
+  /* 关系连坐：查 a↔b 关系类型（双向） */
+  relEdge(a,b){ const bid=b.castId||b.id;
+    const f=x=>(x.rel||[]).find(r=>r.to===bid);
+    const e=f(a)||((b.rel||[]).find(r=>r.to===(a.castId||a.id))); return e?e.type:null; },
+  /* 处罚/封赏一人 → 关系网涟漪（同党亲族师门牵连、政敌世仇反应）。返回受影响摘要。 */
+  relRipple(target, kind){
+    const s=this.s, affected=[], tid=target.castId||target.id;
+    s.ministers.forEach(o=>{
+      if((o.castId||o.id)===tid) return;
+      const type=this.relEdge(target,o); if(!type) return;
+      let dl=0, dt=0, da=0;
+      if(kind==="punish"){
+        if(type==="同党"||type==="盟友"){ dl=-4; dt=-5; }
+        else if(type==="亲族"||type==="姻亲"){ dl=-6; dt=-6; }
+        else if(type==="师徒"){ dl=-5; dt=-4; }
+        else if(type==="政敌"||type==="世仇"){ dl=+3; }
+      }else{ // reward
+        if(type==="师徒"||type==="亲族"||type==="姻亲"||type==="盟友"){ dl=+3; }
+        else if(type==="同党"){ dl=+2; }
+        else if(type==="政敌"||type==="世仇"){ dl=-2; da=+2; }
+      }
+      if(dl||dt||da){ o.loyalty=R.clamp(o.loyalty+dl);
+        if(o.secret) o.secret.trueLoyalty=R.clamp(o.secret.trueLoyalty+dt);
+        if(da) o.ambition=R.clamp(o.ambition+da);
+        affected.push({name:o.name, type, dl}); }
+    });
+    return affected;
+  },
+  /* 连坐 toast 摘要 */
+  _rippleToast(target, kind, affected){
+    if(!affected.length) return;
+    const tip=affected.slice(0,4).map(a=>`${a.name}(${a.type}${a.dl>0?"↑":"↓"})`).join("、");
+    this.toast(`牵动关系：${tip}${affected.length>4?"…":""}`);
+    this.logMsg(`${target.name}${kind==="punish"?"获罪":"受赏"}，牵动 ${affected.map(a=>a.name).join("、")}。`);
+  },
   allConsortFavor(d){ this.s.consorts.forEach(c=>c.favor=R.clamp(c.favor+d)); },
   toast(msg){ UI.toast(msg); },
   removeRebel(){ const s=this.s; if(s.rebel){const m=s.ministers.find(x=>x.id===s.rebel.id); if(m){m.post=null; const i=s.ministers.indexOf(m); s.ministers.splice(i,1);} s.rebel=null;} },
