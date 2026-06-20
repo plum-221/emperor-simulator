@@ -287,6 +287,22 @@ b{color:var(--gold-br);font-weight:600;}
 /* ============ 准4X 大地图 ============ */
 .map-summary{text-align:center;font-size:13px;color:var(--gold-br);padding:2px 0 6px;}
 .map-summary b{font-size:16px;}
+/* 天下 4X 顶栏 */
+.map-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.map-goal{display:flex;align-items:center;gap:8px;font-size:12px;color:#d8b87a;}
+.goal-bar{width:120px;height:9px;background:rgba(0,0,0,.45);border-radius:5px;overflow:hidden;border:1px solid var(--gold-dk);}
+.goal-bar>i{display:block;height:100%;background:linear-gradient(90deg,#c8732e,#f6dd96);transition:width .4s;}
+.map-goal b{color:var(--gold-br);}
+.map-turn{font-size:12.5px;color:#d8b87a;display:flex;align-items:center;gap:8px;}
+.map-turn b{color:var(--gold-br);font-size:15px;}
+.turn-btn{padding:7px 14px;font-size:13px;letter-spacing:.05em;}
+/* 军队单位 */
+.unit-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
+.unit-chip{font-size:12px;padding:5px 9px;border-radius:9px;border:1px solid #5a7ab8;background:rgba(42,74,138,.18);
+  color:#cfe0ff;cursor:pointer;}
+.unit-chip i{font-style:normal;color:#9ab8e8;font-size:11px;margin-left:3px;}
+.unit-chip.on{border-color:#f6dd96;background:rgba(217,182,95,.22);color:#fff;box-shadow:0 0 8px rgba(217,182,95,.5);}
+.wf-hint{background:rgba(217,182,95,.07);border:1px dashed rgba(154,115,39,.4);border-radius:9px;padding:9px 11px;line-height:1.75;}
 .worldmap{width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--gold-dk);
   box-shadow:var(--bevel);touch-action:manipulation;}
 .worldmap .rg:hover rect{filter:brightness(1.15);}
