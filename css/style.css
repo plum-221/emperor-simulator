@@ -734,16 +734,29 @@ b{color:var(--gold-br);font-weight:600;}
   .emperor-panel{width:100%;display:flex;gap:14px;text-align:left;align-items:center;}
   .emp-portrait{margin:0;width:90px;}
   .emp-face,.noface{width:84px;height:106px;}
-  .emp-attrs{flex:1;}
+  .emp-attrs{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:7px 16px;}
   .emp-name{margin-top:0;}
   .act-grid{grid-template-columns:repeat(4,1fr);}
   .game-title{font-size:50px;}
   .tab{font-size:16px;} .tab span{font-size:10px;}
 }
-@media (max-width:420px){
-  .hud-title{font-size:16px;}
-  .nstat{font-size:12px;padding:2px 8px;}
+@media (max-width:480px){
+  /* 顶栏：国号年号占一行，国力六维换到下一行铺满（不再挤在右上角）*/
+  .hud{flex-wrap:wrap;padding:8px 12px;}
+  .hud-reign{flex:1 1 auto;order:1;}
+  .btn-menu{order:2;}
+  .hud-nation{order:3;flex-basis:100%;width:100%;justify-content:space-between;gap:5px 6px;margin-top:7px;}
+  .hud-title{font-size:17px;}
+  .nstat{font-size:12px;padding:3px 8px;}
+  /* 行动按钮：留足点按面积 */
+  .act-grid{grid-template-columns:repeat(4,1fr);gap:7px;}
   .act-btn i{font-size:19px;}
+  /* 底部导航 8 项：收紧间距、缩图标，整齐不挤 */
+  .tabbar{gap:4px;padding:7px 6px;}
+  .tab{padding:6px 1px;border-radius:8px;}
+  .tab .tico svg{width:18px;height:18px;}
+  .tab span{font-size:9.5px;}
+  .tab-next{flex:1.35;}
 }
 
 /* ===== 新生皇嗣赐名 / 破解版面板 ===== */
