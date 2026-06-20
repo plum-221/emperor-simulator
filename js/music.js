@@ -13,8 +13,14 @@ let ctx=null, master=null, enabled=true, started=false;
 let scene=null, timer=null, drone=[], nextT=0, audioEl=null;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 
-/* 真曲覆盖表（默认空·纯合成）。例： court:"assets/audio/court.mp3" */
-const REAL_TRACKS = {};
+/* 真曲覆盖表：指向 assets/audio/ 下的真曲则改播文件（否则纯合成）。
+   title 初始页 / court+night 日常大厅(昼夜同曲不断流) / map 天下舆图。*/
+const REAL_TRACKS = {
+  title: "assets/audio/title.mp3",   // 初始进入页面
+  court: "assets/audio/hall.mp3",    // 日常大厅
+  night: "assets/audio/hall.mp3",    // 入夜也用大厅曲，避免昼夜切换时重启
+  map:   "assets/audio/world.mp3"    // 天下舆图
+};
 
 /* 五声音阶（半音偏移）：宫调 = 大五声；羽调 = 小五声(幽邃) */
 const SCALE_GONG=[0,2,4,7,9], SCALE_YU=[0,3,5,7,10];
@@ -22,6 +28,7 @@ const SCENES = {
   title :{root:60, scale:SCALE_GONG, beat:0.95, density:0.55, oct:[0,1],  droneOct:-2, drum:0,   gain:0.5},
   court :{root:60, scale:SCALE_GONG, beat:0.80, density:0.6,  oct:[0,1],  droneOct:-2, drum:0,   gain:0.5},
   night :{root:57, scale:SCALE_YU,   beat:1.05, density:0.45, oct:[-1,0], droneOct:-2, drum:0,   gain:0.42},
+  map   :{root:60, scale:SCALE_GONG, beat:0.85, density:0.55, oct:[0,1],  droneOct:-2, drum:0,   gain:0.5},
   battle:{root:55, scale:SCALE_YU,   beat:0.42, density:0.85, oct:[0,1],  droneOct:-1, drum:1,   gain:0.55}
 };
 const midi=m=>440*Math.pow(2,(m-69)/12);
@@ -137,6 +144,7 @@ if(typeof document!=="undefined"){
   document.addEventListener("pointerdown",kick); document.addEventListener("keydown",kick);
 }
 
-return { start, setScene, setEnabled, isEnabled, toggle, setVolume, _scenes:SCENES };
+return { start, setScene, setEnabled, isEnabled, toggle, setVolume, _scenes:SCENES,
+  _track:()=>audioEl?audioEl.src:"", _scene:()=>scene };
 })();
 if(typeof globalThis!=="undefined") globalThis.MusicSys=MusicSys;

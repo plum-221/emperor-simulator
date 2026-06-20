@@ -235,8 +235,10 @@ function renderActions(){
 
 /* ---------- 面板 ---------- */
 let panelOpts={};
-function openPanel(name,opts){ panelOpts=opts||{}; $("panel-mask").classList.add("open"); renderPanel(name); }
-function closePanel(){ $("panel-mask").classList.remove("open"); panelOpts={}; }
+function openPanel(name,opts){ panelOpts=opts||{}; $("panel-mask").classList.add("open"); renderPanel(name);
+  if(name==="map" && typeof MusicSys!=="undefined") MusicSys.setScene("map"); }   // 天下专属曲
+function closePanel(){ $("panel-mask").classList.remove("open"); panelOpts={};
+  if(typeof MusicSys!=="undefined" && Game.s){ MusicSys.setScene(Game.s.nation.phase===2?"night":"court"); } }  // 恢复大厅曲
 const PANEL_TITLE={map:"天下 · 列国舆图",court:"朝堂 · 满朝文武",harem:"后宫 · 嫔妃",heir:"皇嗣 · 子女",army:"军务",log:"史册",quest:"大业 · 任务·成就·图鉴"};
 
 function bar(v,color){ return `<span class="mini-bar"><i style="width:${Math.round(v)}%;background:${color}"></i></span>`; }
