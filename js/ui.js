@@ -32,6 +32,45 @@ function dayTransition(head, date, sub){
   setTimeout(()=>{ if(el.parentNode) el.remove(); }, 1180);
 }
 
+/* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 📜 打开） */
+function openCharacter(id){
+  const s=Game.s; const m=s.ministers.find(x=>x.id===id||x.castId===id); if(!m) return;
+  const tg=GACHA.tiers[m.tier||"mid"];
+  const status=(cid)=>{
+    if(s.ministers.some(x=>(x.castId||x.id)===cid)) return {t:"在朝",c:"st-in"};
+    if((s.exiled||[]).includes(cid)) return {t:"已逐",c:"st-out"};
+    return {t:"未仕",c:"st-un"};
+  };
+  let relHTML="";
+  if(m.rel && m.rel.length){
+    relHTML=m.rel.map(r=>{
+      const rt=(typeof RELTYPE!=="undefined"&&RELTYPE[r.type])||{ico:"·",cls:""};
+      const other=(typeof castById!=="undefined"&&castById(r.to))||null;
+      const oname=other?`${other.title?other.title+"·":""}${other.name}`:r.to;
+      const st=status(r.to);
+      return `<div class="ch-rel ${rt.cls}">
+        <span class="ch-rt">${rt.ico} ${r.type}</span>
+        <span class="ch-ro">${oname}<span class="ch-st ${st.c}">${st.t}</span></span>
+        ${r.note?`<span class="ch-rn">${r.note}</span>`:""}</div>`;
+    }).join("");
+  }else relHTML=`<div class="ch-rel-none">朝中暂无明载之亲故。</div>`;
+  const html=`<div class="charv">
+    <div class="ch-top">
+      ${img(m.portrait,"ch-face")}
+      <div class="ch-id">
+        <div class="ch-name"><b>${m.name}</b><span class="ch-title">${m.title||(m.kind==="martial"?"武将":"文官")}</span></div>
+        <div class="ch-tags"><span style="color:${tg.color}">${tg.star} ${tg.name}</span> · <span class="ch-pers">${m.personality}</span> · ${m.age||"—"}岁</div>
+        <div class="ch-stat">文才 <b>${m.civ}</b> · 武略 <b>${m.mil}</b> · 忠诚 <b>${Math.round(m.loyalty)}</b> · 野心 <b>${Math.round(m.ambition)}</b> · Lv${m.level||1}</div>
+      </div>
+    </div>
+    <div class="ch-sec-h">身世</div>
+    <p class="ch-story">${m.story||"（其人来历，史册无载。）"}</p>
+    <div class="ch-sec-h">关系网</div>
+    <div class="ch-rels">${relHTML}</div>
+  </div>`;
+  openModal(html);
+}
+
 /* 立绘解析：具体文件 or 按角色随机取一张 */
 function faceFor(role){
   const M=Game.manifest||{};
@@ -198,7 +237,7 @@ function renderPanel(name){
       return `<div class="m-card" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
         <div class="m-info">
-          <div class="m-head"><b>${m.name}</b><span class="m-tier" style="color:${tg.color}" title="${tg.name}">${tg.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span></div>
+          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${tg.color}" title="${tg.name}">${tg.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">📜</button></div>
           <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil} <span class="m-lv">Lv${m.level||1}</span><span class="m-exp">${m.exp||0}/${(m.level||1)*10}</span></div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
@@ -486,7 +525,7 @@ function boot(){
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
-  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, boot};
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, boot};
 })();
 
 UI.boot();

@@ -40,11 +40,9 @@ const api = {
 
   newGame(dynasty,name,reign){
     const M=this.manifest;
-    // 开局收缩：仅 2 文官 + 3 武将，全 1★(low)，数值低且随机；强者靠招贤抽卡
-    const ministers = buildMinisters(M.ministers, 2, "low");
-    const generals  = buildGenerals(M.generals.length?M.generals:M.ministers, 3, "low");
-    // 开局自动任命前几位
-    const roster = ministers.concat(generals);
+    // 固定班底：开局仅少数核心重臣在朝（澹台衡/欧阳彻·赫连勃/独孤信/长孙晟），
+    // 其余固定人物靠招贤/事件/条件从名册逐个登场（不再随机生成路人）。
+    const roster = startingCast();
     this.s = {
       dynasty:dynasty||"大宁", reign:reign||"永熙", gen:1,
       emperor:{name:name||"萧承乾", age:R.i(16,20), portrait:this.pickFace(M),
@@ -61,7 +59,8 @@ const api = {
         consorts:R.shuffle(M.consorts).slice(3),
         generals:R.shuffle(M.generals).slice(4)
       },
-      blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池
+      blacklist:[],   // 已罢免/处死者的立绘文件，永不再入招贤池（旧机制兼容）
+      exiled:[],      // 已罢免/处死的固定人物 castId，名册不再揭示
       recruitPoints:12, shards:0, gachaPity:0,   // 招贤点 / 升级碎片 / 保底计数（开局仅够一抽）
       talentPts:1, talents:[],                    // 帝王天赋点 / 已点天赋
       weapons:[],   // 已得武器 id 列表（武库）
@@ -226,6 +225,7 @@ const api = {
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
     const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
     s.nation.people=R.clamp(s.nation.people-3); this.shiftAllLoyalty(-3);
     this.checkRomanceBreak(post);
     SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); UI.renderPanel("court"); this.renderTurn();
@@ -235,6 +235,7 @@ const api = {
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
     const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
     this.shiftAllLoyalty(-1);
     this.checkRomanceBreak(post);
     SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`);
@@ -253,29 +254,32 @@ const api = {
   },
   /* 招贤抽卡：消耗「招贤点」单池抽卡 + 高/中/低档 + 保底 + 重复转碎片。
      排除黑名单（罢免/处死者永不再现）；抽中已在朝者→化碎片（不出现两个同人）。*/
+  /* 招贤改造：从「固定名册」揭示一位尚未登场的人物（不再随机生成路人）。
+     rollTier 决定本抽偏向的档位（保底照旧），优先取该档候选；名册招满 → 化碎片。
+     已流放(exiled)者名册不再揭示——杜绝「罢免-重抽更强随机替代」。 */
   recruitDraw(){
     const s=this.s;
     const cost = s.recruitVoucher ? Math.ceil(GACHA.cost/2) : GACHA.cost;   // 低价券：半价一次
     if(s.recruitPoints < cost){ this.toast(`招贤点不足（需 ${cost}）`); UI.renderPanel("court"); return null; }
-    const M=this.manifest||{};
-    const roster=[].concat((M.ministers||[]).map(x=>({src:x,kind:"civil"})),
-                           (M.generals||[]).map(x=>({src:x,kind:"martial"})))
-      .filter(e=>!s.blacklist.includes(e.src.file));
-    if(!roster.length){ this.toast("天下贤才已绝"); return null; }
-    s.recruitPoints-=cost; if(s.recruitVoucher) s.recruitVoucher=false;
-    const tierKey=rollTier(s.gachaPity||0), tier=GACHA.tiers[tierKey];
-    s.gachaPity = tierKey==="high" ? 0 : (s.gachaPity||0)+1;
-    const pick=R.pick(roster);
-    if(s.ministers.some(m=>m.portrait===pick.src.file)){   // 重复 → 碎片
-      s.shards=(s.shards||0)+tier.shard; SFX.pick();
-      this.toast(`【${tier.name}${tier.star}】抽得已仕之贤，化为碎片 +${tier.shard}（共 ${s.shards}）`);
+    const pool = recruitablePool(s);
+    if(!pool.length){   // 名册已尽：举朝贤才悉数在位（或前置未满），化招贤之资为碎片
+      s.recruitPoints-=cost; if(s.recruitVoucher) s.recruitVoucher=false;
+      s.shards=(s.shards||0)+3; SFX.pick();
+      this.toast(`一时再无贤才可征，招贤所获化为碎片 +3（共 ${s.shards}）`);
       UI.renderPanel("court"); this.renderTurn();
-      return {dupe:true,tierKey,shard:tier.shard};
+      return {dupe:true,shard:3};
     }
-    const m=(pick.kind==="martial"?buildGenerals:buildMinisters)([pick.src],1,tierKey)[0];
-    // 数值已由 tier 区间(TIER_STATS)决定，不再额外叠加 statBonus
+    s.recruitPoints-=cost; if(s.recruitVoucher) s.recruitVoucher=false;
+    const want=rollTier(s.gachaPity||0);
+    s.gachaPity = want==="high" ? 0 : (s.gachaPity||0)+1;
+    let cands = pool.filter(c=>c.tier===want);
+    if(!cands.length) cands = pool;                 // 该档名册已空 → 全池
+    const c = R.pick(cands);
+    const tier = GACHA.tiers[c.tier] || GACHA.tiers.mid;   // 按其真实档位显示
+    if(want==="high" && c.tier!=="high") s.gachaPity=GACHA.pity;  // 保底未真出大才则不清零
+    const m = makeFromCast(c);
     s.ministers.push(m); SFX.gong(); this.tally("recruit");
-    this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.name}（文${m.civ}·武${m.mil}）。`);
+    this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.title}·${m.name}（文${m.civ}·武${m.mil}）。`);
     UI.showRecruit(m);
     UI.renderPanel("court"); this.renderTurn();
     return m;
