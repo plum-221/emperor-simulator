@@ -363,8 +363,15 @@ function svgMap(s){
     </g>`;
   });
   return `<svg viewBox="0 0 600 470" class="worldmap" preserveAspectRatio="xMidYMid meet">
-    <defs><radialGradient id="mapbg" cx="50%" cy="42%" r="75%"><stop offset="0%" stop-color="#3a2c18"/><stop offset="100%" stop-color="#211608"/></radialGradient></defs>
-    <rect x="0" y="0" width="600" height="470" rx="14" fill="url(#mapbg)"/>${lines}${tiles}</svg>`;
+    <defs>
+      <radialGradient id="mapbg" cx="50%" cy="42%" r="75%"><stop offset="0%" stop-color="#3a2c18"/><stop offset="100%" stop-color="#211608"/></radialGradient>
+      <clipPath id="mapclip"><rect x="0" y="0" width="600" height="470" rx="14"/></clipPath>
+    </defs>
+    <g clip-path="url(#mapclip)">
+      <rect x="0" y="0" width="600" height="470" fill="url(#mapbg)"/>
+      <image href="assets/scenes/map_bg.jpg" x="0" y="0" width="600" height="470" preserveAspectRatio="xMidYMid slice" opacity="0.92"/>
+      <rect x="0" y="0" width="600" height="470" fill="#1a1208" opacity="0.3"/>
+    </g>${lines}${tiles}</svg>`;
 }
 function actionCard(s){
   const m=s.map, r=m.sel?region(m.sel):null;

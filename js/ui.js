@@ -147,6 +147,23 @@ function renderEmperor(){
 }
 
 /* ---------- 事件卡 ---------- */
+/* 事件 → 场景插画类别（按 id 精确，回落到 cat 类别，再回落朝堂大殿） */
+const SCENE_BY_ID={
+  ev_drought:"drought", ev_flood:"flood", ev_flood2:"flood", ev_locust:"locust", ev_plague:"plague",
+  ev_exam:"exam", ev_exam_fraud:"exam", ev_invade:"war", ev_general_ask:"war", ev_hunt:"war", ev_autumn:"war",
+  ev_omen:"omen", ev_qilin:"omen", ev_eclipse:"omen", big_omen:"omen",
+  ev_harem_jealous:"harem", ev_inspect:"incognito", ev_orphan:"incognito",
+  ev_trade:"market", ev_merchant:"market", ev_palace:"market", ev_lantern:"market", ev_horse:"market",
+  ev_rebel_min:"rebellion", big_coup:"rebellion", big_rebellion:"rebellion", ev_assassin:"rebellion",
+  ev_swordsman:"incognito", ev_poet:"incognito", ev_monk:"incognito", ev_painting:"incognito",
+  big_invasion:"war", big_heir:"court"
+};
+const SCENE_BY_CAT={ 灾害:"flood", 战争:"war", 军事:"war", 后宫:"harem", 祥瑞:"omen", 危机:"rebellion",
+  大事件:"rebellion", 经济:"market", 节庆:"market", 民生:"incognito", 江湖:"incognito", 奇人:"incognito", 秘闻:"incognito" };
+function sceneFor(card){
+  return SCENE_BY_ID[card.id] || SCENE_BY_CAT[card.cat] || "court";
+}
+
 function showEvent(card){
   const s=Game.s;
   if(!card._face) card._face=faceFor(card.role||"chancellor");
@@ -155,9 +172,11 @@ function showEvent(card){
   const title=typeof card.title==="function"?card.title(s):card.title;
   const choices=card.choices.filter(c=>!c.cond||c.cond(s));
   const banner=card.big?`<div class="ev-banner">大 事 件 · 国 之 存 亡</div>`:"";
+  const illust=`<img class="ev-illust" src="assets/scenes/${sceneFor(card)}.jpg" alt="" onerror="this.remove()">`;
   $("event-area").innerHTML=`
     <div class="ev-card${card.big?" big":""}">
       ${banner}
+      ${illust}
       <div class="ev-top">
         ${img(card._face,"ev-face")}
         <div class="ev-meta"><span class="ev-speaker">${speaker}</span>
@@ -416,6 +435,10 @@ function announceSuccession(d,cb){
 
 /* ---------- 结局 ---------- */
 function showEnd(e,stat){
+  const cg=e.good?"end_sage":"end_fall";
+  const es=$("screen-end");
+  if(es){ es.style.backgroundImage=`linear-gradient(rgba(10,4,2,.74),rgba(10,4,2,.88)), url('assets/scenes/${cg}.jpg')`;
+    es.style.backgroundSize="cover"; es.style.backgroundPosition="center"; }
   $("end-seal").textContent=e.seal;
   $("end-temple").textContent=e.temple||"";
   $("end-title").textContent=e.title;
