@@ -512,13 +512,108 @@ function openGameMenu(){
     <button class="btn" onclick="UI.toggleMusic(this)">背景音乐：${mOn?"开":"关"}</button>
     <button class="btn" onclick="UI.toggleSfx(this)">音效：${sOn?"开":"关"}</button>
     <button class="btn" onclick="UI.openHelp()">玩法说明</button>
+    <button class="btn" onclick="UI.openCheatGate()">🔓 破解版</button>
     <button class="btn" onclick="UI.backToTitle()">返回标题</button>
     <button class="btn ghost" onclick="UI.closeModal()">✖ 继续游戏</button>
   </div><p class="panel-tip">※ 背景音乐为实时合成古风（五声音阶古筝），随昼夜战事变换。进度已自动保存。</p>`);
 }
+/* ---------- 破解版（密令 admin@XI）---------- */
+function openCheatGate(){
+  if(Game._cheat){ openCheatPanel(); return; }
+  openModal(`<h2>🔒 破解版</h2>
+    <p class="panel-tip">输入帝王密令，解锁全方位体验与参数编辑。</p>
+    <div class="nb-name"><span>密令</span><input id="ch-pass" type="password" placeholder="••••••••"></div>
+    <div class="nb-btns">
+      <button class="btn btn-primary" onclick="UI.verifyCheat()">解　锁</button>
+      <button class="btn ghost" onclick="UI.openGameMenu()">返回</button>
+    </div>`);
+  setTimeout(()=>{ const i=$("ch-pass"); if(i){ i.focus(); i.onkeydown=e=>{ if(e.key==="Enter") verifyCheat(); }; } },60);
+}
+function verifyCheat(){
+  const v=($("ch-pass")?$("ch-pass").value:"").trim();
+  if(v==="admin@XI"){ Game._cheat=true; try{localStorage.setItem("zjjs_cheat","1");}catch(e){}
+    toast("密令通过，破解版已解锁"); openCheatPanel(); }
+  else { toast("密令有误"); const i=$("ch-pass"); if(i){ i.value=""; i.focus(); } }
+}
+function openCheatPanel(){
+  const s=Game.s; if(!s){ toast("请先开局"); return; }
+  const n=s.nation, e=s.emperor;
+  const NK=Object.keys(NATION_STATS), EK=Object.keys(EMP_ATTRS);
+  const row=(k,grp,label,val)=>`<label class="ch-row"><span>${label}</span><input class="ch-in" data-grp="${grp}" data-k="${k}" value="${val}"></label>`;
+  const h=`<div class="cheat"><h2>🔓 破解版 · 帝王密令</h2>
+    <p class="panel-tip ch-tip">一键拉满，或编辑数值后「应用」。各维上限 100，招贤点·碎片·圣寿不限。仅本机生效。</p>
+    <div class="ch-quick">
+      <button class="btn btn-primary" onclick="UI.cheatMax('nation')">国力全满</button>
+      <button class="btn btn-primary" onclick="UI.cheatMax('emperor')">帝王全满</button>
+      <button class="btn" onclick="UI.cheatAdd('recruitPoints',500)">招贤点 +500</button>
+      <button class="btn" onclick="UI.cheatAdd('shards',500)">碎片 +500</button>
+      <button class="btn" onclick="UI.cheatHeal()">龙体康复</button>
+    </div>
+    <h3 class="ch-h">国家六维</h3>
+    <div class="ch-grid">${NK.map(k=>row(k,"n",NATION_STATS[k].name,Math.round(n[k]))).join("")}</div>
+    <h3 class="ch-h">帝王五维</h3>
+    <div class="ch-grid">${EK.map(k=>row(k,"e",EMP_ATTRS[k].name,Math.round(e[k]))).join("")}</div>
+    <h3 class="ch-h">资源 · 寿数</h3>
+    <div class="ch-grid">
+      ${row("recruitPoints","s","招贤点",s.recruitPoints||0)}
+      ${row("shards","s","碎片",s.shards||0)}
+      ${row("age","e","圣寿",e.age||0)}
+    </div>
+    <div class="nb-btns">
+      <button class="btn btn-primary" onclick="UI.cheatApply()">应　用</button>
+      <button class="btn ghost" onclick="UI.openGameMenu()">返回菜单</button>
+    </div></div>`;
+  openModal(h);
+}
+function _cheatRefresh(){ renderHUD(); renderEmperor(); if(typeof Game.save==="function") Game.save(); }
+function cheatMax(which){
+  const s=Game.s; if(!s) return;
+  if(which==="nation"){ for(const k in NATION_STATS) s.nation[k]=100; }
+  else { for(const k in EMP_ATTRS) s.emperor[k]=100; }
+  _cheatRefresh(); toast(which==="nation"?"国力已拉满":"帝王五维已拉满"); openCheatPanel();
+}
+function cheatAdd(key,amt){ const s=Game.s; if(!s) return; s[key]=(s[key]||0)+amt; _cheatRefresh(); toast(`${key==="shards"?"碎片":"招贤点"} +${amt}`); openCheatPanel(); }
+function cheatHeal(){ const s=Game.s; if(!s) return; s.emperor.health=100; _cheatRefresh(); toast("龙体康复，健康 100"); openCheatPanel(); }
+function cheatApply(){
+  const s=Game.s; if(!s) return;
+  [...document.querySelectorAll(".ch-in")].forEach(inp=>{
+    const grp=inp.dataset.grp, k=inp.dataset.k; let v=parseInt(inp.value,10); if(isNaN(v)) return;
+    if(grp==="n") s.nation[k]=v; else if(grp==="e") s.emperor[k]=v; else s[k]=v;
+  });
+  if(typeof Game.clampAll==="function") Game.clampAll();   // 六维/五维收敛到 0-100，招贤点/碎片/圣寿不受限
+  _cheatRefresh(); toast("已应用"); openCheatPanel();
+}
+
 function toggleMusic(btn){ if(typeof MusicSys==="undefined") return; const on=MusicSys.toggle(); if(btn) btn.textContent=`背景音乐：${on?"开":"关"}`; }
 function toggleSfx(btn){ if(typeof SFX==="undefined") return; const on=SFX.isMuted(); SFX.setMuted(!on); if(btn) btn.textContent=`音效：${!on?"关":"开"}`; }
 function backToTitle(){ closeModal(); show("title"); showRecord(); if(typeof MusicSys!=="undefined") MusicSys.setScene("title"); }
+
+/* ---------- 新生皇嗣赐名 ---------- */
+function promptNewborns(){
+  const s=Game.s; if(!s._newborns||!s._newborns.length) return;
+  const id=s._newborns[0];
+  const c=s.children.find(x=>String(x.id)===String(id));
+  if(!c){ s._newborns.shift(); return promptNewborns(); }   // 已不存在则跳过
+  const sib=c.gender==="男"?"皇子":"公主";
+  openModal(`<h2>${sib} 降生</h2>
+    <p class="nb-tip"><b>${c.mother}</b> 为陛下诞下一位 <b>${sib}</b>，恭请陛下赐名。</p>
+    <div class="nb-name"><span>赐名</span><input id="nb-input" maxlength="4" value="${c.name}" placeholder="${c.name}"></div>
+    <div class="nb-btns">
+      <button class="btn btn-primary" onclick="UI.confirmNewbornName()">钦　定</button>
+      <button class="btn ghost" onclick="UI.confirmNewbornName(true)">由钦天监拟名</button>
+    </div>`);
+  setTimeout(()=>{ const i=$("nb-input"); if(i){ i.focus(); i.select();
+    i.onkeydown=e=>{ if(e.key==="Enter") confirmNewbornName(); }; } },60);
+}
+function confirmNewbornName(keep){
+  const s=Game.s; if(!s._newborns||!s._newborns.length){ closeModal(); return; }
+  const id=s._newborns[0];
+  const c=s.children.find(x=>String(x.id)===String(id));
+  if(c && !keep){ const v=($("nb-input")?$("nb-input").value:"").trim(); if(v) c.name=v.slice(0,4); }
+  s._newborns.shift(); if(typeof Game.save==="function") Game.save();
+  closeModal();
+  if(s._newborns.length){ setTimeout(promptNewborns,120); }   // 还有未命名者，继续下一位
+}
 
 /* ---------- 开场预加载：把所有立绘一次性载入浏览器缓存，进局后立绘即开即显 ---------- */
 function collectAssetUrls(){
@@ -550,6 +645,7 @@ function preloadAssets(done){
   setTimeout(()=>{ if(!finished){ if(txt) txt.textContent="仪仗就绪，恭请登基"; finish(); } }, 20000); // 兜底：个别图卡住也放行
 }
 function boot(){
+  try{ if(localStorage.getItem("zjjs_cheat")==="1") Game._cheat=true; }catch(e){}   // 破解版一经解锁，本机长期有效
   Game.init().then(()=>{
     showRecord();
     if(typeof MusicSys!=="undefined") MusicSys.setScene("title");   // 标题曲（首次交互后起播）
@@ -577,6 +673,8 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
+  promptNewborns, confirmNewbornName,
+  openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};
 })();
 

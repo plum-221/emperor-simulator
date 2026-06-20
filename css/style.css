@@ -742,3 +742,27 @@ b{color:var(--gold-br);font-weight:600;}
   .nstat{font-size:12px;padding:2px 8px;}
   .act-btn i{font-size:19px;}
 }
+
+/* ===== 新生皇嗣赐名 / 破解版面板 ===== */
+.nb-tip{margin:6px 0 14px;color:#e8d9b8;line-height:1.7;}
+.nb-name{display:flex;align-items:center;gap:10px;margin:10px 0 4px;}
+.nb-name span{color:#caa45a;font-size:14px;white-space:nowrap;}
+.nb-name input,.ch-in{flex:1;background:rgba(0,0,0,.28);border:1px solid #6a4a2a;border-radius:7px;
+  color:#f3e6c8;padding:8px 10px;font-size:15px;outline:none;font-family:inherit;}
+.nb-name input:focus,.ch-in:focus{border-color:#caa45a;box-shadow:0 0 0 2px rgba(202,164,90,.25);}
+.nb-btns{display:flex;gap:10px;margin-top:16px;}
+.nb-btns .btn{flex:1;}
+/* 破解面板：紧凑布局，常见屏幕一屏装下、不出滚动条 */
+.modal-box:has(.cheat){max-width:500px;padding:18px 20px 16px;scrollbar-width:none;-ms-overflow-style:none;}
+.modal-box:has(.cheat)::-webkit-scrollbar{display:none;}
+.cheat h2{font-size:20px;margin-bottom:6px;}
+.ch-tip{font-size:12px;line-height:1.5;margin:0 0 8px;color:#bba488;}
+.ch-quick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 4px;}
+.ch-quick .btn{flex:1 1 30%;padding:7px 4px;font-size:12.5px;}
+.ch-h{margin:10px 0 4px;color:#caa45a;font-size:13px;border-bottom:1px solid rgba(202,164,90,.25);padding-bottom:3px;}
+.ch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.ch-row{display:flex;flex-direction:column;gap:2px;}
+.ch-row span{font-size:11px;color:#bba;}
+.ch-in{padding:5px 6px;font-size:13.5px;text-align:center;}
+.cheat .nb-btns{margin-top:12px;}
+@media (max-width:420px){ .ch-quick .btn{flex:1 1 30%;} }

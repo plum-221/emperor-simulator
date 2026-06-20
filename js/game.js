@@ -174,6 +174,11 @@ const api = {
     rest:{name:"休养",icon:ICONS.rest,hint:"颐养龙体，恢复健康（夜）",phases:["eve"],run(s){
       s.emperor.health+= Game.hasTalent("t_longevity")?R.i(5,8):R.i(3,5);
       return "静心休养，龙体渐安。";}},
+    farm:{name:"劝农",icon:ICONS.food,hint:"劝课农桑、开渠屯田，充实粮仓（晨/午）",phases:["morn","noon"],run(s){
+      const df=Math.max(3,Math.round(4+s.emperor.politics/16));   // 政治越高，劝农越见成效
+      s.nation.food+=df; if(R.chance(45))s.nation.people+=1;
+      s.emperor.health-=1; s.emperor.exp+=1;
+      return `亲劝农桑，粮草 +${df}。`;}},
     inspect:{name:"微服私访",icon:ICONS.visit,hint:"微服出宫，奇遇连连（午/夜）",phases:["noon","eve"],run(s){
       Game.startInspection(); return "";}}
   },
@@ -829,6 +834,8 @@ const api = {
       const rec=SpySys.nightReport(s);
       if(rec && (rec.items.length||rec.alert) && !s.pendingEvent) UI.openModal(SpySys.reportHTML(rec));
     }
+    // 新生皇嗣赐名：本回合若有皇子/公主降生，逐一请陛下钦定名讳（快进时静默用拟名）
+    if(!this._ff && s._newborns && s._newborns.length && typeof UI!=="undefined" && UI.promptNewborns) UI.promptNewborns();
   },
 
   /* 每日：轻量推进（健康微漂移 + 百官暗面演化 + 暗线养熟检测）*/
@@ -922,7 +929,8 @@ const api = {
       health:R.i(50,80), int:R.i(30,70), charm:R.i(30,70), martial:R.i(30,70), politics:R.i(30,70)};
     s.children.push(child);
     s.nation.prestige=R.clamp(s.nation.prestige+2);
-    this.toast(`${c.name} 诞下皇${boy?"子":"女"} ${name}！`); this.logMsg(`${c.name} 诞下皇${boy?"子":"女"}${name}。`);
+    (s._newborns=s._newborns||[]).push(child.id);   // 排入「待陛下赐名」队列（见 nextTurn → UI.promptNewborns）
+    this.toast(`${c.name} 诞下皇${boy?"子":"女"}！`); this.logMsg(`${c.name} 诞下皇${boy?"子":"女"}。`);
   },
 
   /* ---------- 帝王驾崩 / 传承 ---------- */
