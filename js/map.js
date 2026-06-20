@@ -46,20 +46,46 @@ const REGIONS = [
    adj:["hexi","longyou"]}
 ];
 
-/* 兵种 */
+/* 兵种（build=以城池产能建造所需点数；需 reqTech 则科技解锁） */
 const UNIT_TYPES = {
-  bu:{key:"bu", name:"步军", icon:"卒", hp:32, atk:13, move:2, cost:{treasury:8, food:6, military:4}},
-  qi:{key:"qi", name:"骑军", icon:"骑", hp:26, atk:17, move:3, cost:{treasury:13, food:8, military:5}}
+  bu:{key:"bu", name:"步军", icon:"卒", hp:32, atk:13, move:2, build:6},
+  qi:{key:"qi", name:"骑军", icon:"骑", hp:26, atk:17, move:3, build:9},
+  nu:{key:"nu", name:"弩军", icon:"弩", hp:24, atk:21, move:2, build:11, reqTech:"crossbow"},
+  jin:{key:"jin",name:"精锐", icon:"锐", hp:40, atk:24, move:2, build:16, reqTech:"elite"}
 };
+/* 城池建筑（每州可建·分级·建造耗产能·每回合产出反哺国家或加成） */
+const BUILDINGS = {
+  farm:    {key:"farm",   name:"农田", icon:"🌾", max:3, build:5, desc:"每回合产粮"},
+  market:  {key:"market", name:"市集", icon:"🪙", max:3, build:6, desc:"每回合入库"},
+  barracks:{key:"barracks",name:"兵营",icon:"🏯", max:3, build:7, desc:"+产能·解锁强兵"},
+  wall:    {key:"wall",   name:"城墙", icon:"🧱", max:3, build:6, desc:"+守备(被攻更难破)"},
+  academy: {key:"academy",name:"书院", icon:"📚", max:2, build:8, desc:"每回合+研究点"}
+};
+/* 国策/科技树（P3·研究点逐回合积累解锁） */
+const TECH = {
+  drill:    {key:"drill",   name:"勤练精兵", cost:8,  req:[],                    desc:"全军攻击 +3"},
+  farming:  {key:"farming", name:"劝课农桑", cost:8,  req:[],                    desc:"农田产粮 +50%"},
+  masonry:  {key:"masonry", name:"金城汤池", cost:10, req:[],                    desc:"城墙守备翻倍"},
+  crossbow: {key:"crossbow",name:"强弩之术", cost:11, req:["drill"],             desc:"解锁弩军(高攻)"},
+  cavalry:  {key:"cavalry", name:"控弦之士", cost:12, req:["drill"],             desc:"骑军机动 +1"},
+  commerce: {key:"commerce",name:"通商惠工", cost:10, req:["farming"],           desc:"市集入库 +50%"},
+  logistics:{key:"logistics",name:"足食足兵",cost:12, req:["farming"],           desc:"各城产能 +1"},
+  academy:  {key:"academy", name:"兴文重教", cost:9,  req:["commerce"],          desc:"每回合 +1 研究点"},
+  elite:    {key:"elite",   name:"虎贲之锐", cost:18, req:["crossbow","masonry"],desc:"解锁精锐(最强兵)"},
+  unify:    {key:"unify",   name:"大一统论", cost:22, req:["academy","logistics"],desc:"夺州威望翻倍·终极国策"}
+};
+function techAvailable(k){ const t=TECH[k]; return t.req.every(r=>hasTech(r)); }
 
 /* ---------- 状态 ---------- */
+function initCity(r){ if(!r.build) r.build={farm:0,market:0,barracks:0,wall:0,academy:0};
+  if(r.store==null) r.store=0; if(!r.queue) r.queue=[]; }
 function initState(s){
   if(s.map && s.map.regions && s.map.regions.length){
     if(!s.map.units) s.map.units=[];     // 旧档惰性补
     if(s.map.turn==null) s.map.turn=1;
     if(s.map.seq==null) s.map.seq=0;
-    // 旧档 garrison 兼容：非己州用 str
-    s.map.regions.forEach(r=>{ if(r.garrison==null) r.garrison=(r.owner==="self"?0:r.str||20); });
+    if(!s.map.tech) s.map.tech={done:[],cur:null,pts:0};
+    s.map.regions.forEach(r=>{ if(r.garrison==null) r.garrison=(r.owner==="self"?0:r.str||20); if(r.owner==="self") initCity(r); });
     return;
   }
   const regions = REGIONS.map(r=>({
@@ -71,7 +97,8 @@ function initState(s){
   const byId=id=>regions.find(x=>x.id===id);
   regions.forEach(r=>{ if(r.owner==="self") r.explored=true; });
   regions.forEach(r=>{ if(r.adj.some(id=>{const a=byId(id);return a&&a.owner==="self";})) r.explored=true; });
-  s.map = {regions, units:[], sel:null, selU:null, turn:1, seq:0};
+  regions.forEach(r=>{ if(r.owner==="self") initCity(r); });
+  s.map = {regions, units:[], sel:null, selU:null, turn:1, seq:0, tech:{done:[],cur:null,pts:0}};
   // 开局驻军：都城两步一骑
   spawn(s,"jingji","bu"); spawn(s,"jingji","bu"); spawn(s,"jingji","qi");
   spawn(s,"zhongyuan","bu"); spawn(s,"guanzhong","bu");
@@ -86,7 +113,30 @@ function unit(id){ return M().units.find(u=>u.id===id); }
 function unitsIn(rid,owner){ return M().units.filter(u=>u.rid===rid && (!owner||u.owner===owner)); }
 function bordersSelf(r){ return r.adj.some(id=>{const a=region(id);return a&&a.owner==="self";}); }
 function counts(){ const rs=M().regions; return {own:rs.filter(r=>r.owner==="self").length, total:rs.length}; }
-function defenseOf(r){ return Math.round(r.garrison + (TERRAIN_DEF[r.terrain]||0) + r.dev*4); }
+function defenseOf(r){ const wall=(r.build&&r.build.wall||0)*(hasTech("masonry")?12:6); return Math.round(r.garrison + (TERRAIN_DEF[r.terrain]||0) + r.dev*4 + (r.owner==="self"?wall:0)); }
+/* ---------- 城池产能 / 科技（P2/P3）---------- */
+function hasTech(k){ const t=M().tech; return t&&t.done.includes(k); }
+function prodOf(r){ return 1 + (r.dev||0) + (r.build&&r.build.barracks||0) + (r.cap?1:0) + (hasTech("logistics")?1:0); }
+function unitAtkBonus(){ return hasTech("drill")?3:0; }   // 国策·勤练
+function moveOf(u){ return UNIT_TYPES[u.type].move + (hasTech("cavalry")&&u.type==="qi"?1:0); }
+function startResearch(k){ const m=M(); if(hasTech(k)) return; if(!techAvailable(k)){ Game.toast("前置国策未成"); return; }
+  m.tech.cur=k; SFX.pick(); Game.toast(`始研国策《${TECH[k].name}》`); UI.renderPanel("map"); }
+function queueUnit(rid,type){
+  const r=region(rid), t=UNIT_TYPES[type]; if(!r||r.owner!=="self") return;
+  if(t.reqTech && !hasTech(t.reqTech)){ Game.toast(`需先研习国策方可建「${t.name}」`); return; }
+  if(r.queue.length>=4){ Game.toast("此城工役已满（队列上限4）"); return; }
+  r.queue.push({kind:"unit", key:type, name:t.name, left:t.build, cost:t.build}); SFX.pick();
+  Game.toast(`${r.name} 着手编练${t.name}（需产能 ${t.build}）`); UI.renderPanel("map");
+}
+function queueBuild(rid,key){
+  const r=region(rid), b=BUILDINGS[key]; if(!r||r.owner!=="self") return;
+  const lv=(r.build[key]||0), queued=r.queue.filter(q=>q.kind==="build"&&q.key===key).length;
+  if(lv+queued>=b.max){ Game.toast(`${b.name}已达上限`); return; }
+  if(r.queue.length>=4){ Game.toast("此城工役已满（队列上限4）"); return; }
+  r.queue.push({kind:"build", key, name:b.name+"·"+(lv+queued+1)+"级", left:b.build, cost:b.build}); SFX.pick();
+  Game.toast(`${r.name} 兴建${b.name}（需产能 ${b.build}）`); UI.renderPanel("map");
+}
+function cancelQueue(rid,idx){ const r=region(rid); if(!r||!r.queue[idx]) return; r.queue.splice(idx,1); SFX.pick(); UI.renderPanel("map"); }
 
 /* ---------- 月度反哺国家（game.js monthlySettle 调）---------- */
 function produce(s){
@@ -137,32 +187,54 @@ function isAttackTarget(u,r){
 }
 function moveUnit(u,r){ u.rid=r.id; u.movesLeft=Math.max(0,u.movesLeft-1); SFX.pick(); M().sel=r.id; UI.renderPanel("map"); }
 
-/* ---------- 围攻战斗（持续 HP·多回合）---------- */
+/* ---------- 攻城（P5：开沙盘战棋亲自指挥；无头则即时判定）---------- */
 function attack(u,r){
   if(!isAttackTarget(u,r)){ Game.toast("不可攻击此地"); return; }
   if(!r.explored){ Game.toast("敌情不明，请先遣使探索"); return; }
-  const def=defenseOf(r);
-  const dmgG=Math.max(3,Math.round(u.atk*R.rnd(0.7,1.15)));
-  const dmgU=Math.max(2,Math.round(def*0.32*R.rnd(0.7,1.15)));
-  r.garrison=Math.max(0,r.garrison-dmgG); u.hp=Math.max(0,u.hp-dmgU); u.movesLeft=0;
-  let msg=`${UNIT_TYPES[u.type].name}攻 ${r.name}，挫敌守备 ${dmgG}`;
-  if(u.hp<=0){ // 我军覆没
-    M().units=M().units.filter(x=>x.id!==u.id); M().selU=null;
-    msg+=`，然力战不支，全军覆没！`;
-    SFX.bad(); Game.toast(msg); UI.renderPanel("map"); return;
+  u.movesLeft=0; M().sel=r.id;
+  if(typeof WarfieldSys!=="undefined" && WarfieldSys.open){
+    const s=Game.s, gens=s.ministers.filter(m=>m.kind==="martial").slice(0,3);
+    UI.closePanel&&UI.closePanel();                       // 收起地图，露出战棋弹窗
+    WarfieldSys.open({ enemy:(r.faction||r.owner||"敌军"),
+      ourMilitary:Math.round(u.hp*1.4 + s.nation.military*0.25 + (u.type==="qi"?10:0)),
+      generals:gens, emperor:s.emperor, withEmperor:false,
+      enemyPow:defenseOf(r), onResolve:res=>resolveAssault(u.id, r.id, res) });
+  } else { quickAssault(u,r); }
+}
+function resolveAssault(uid, rid, res){
+  const r=region(rid), u=unit(uid); const s=Game.s;
+  if(res && res.win){
+    if(u) capture(r,u); else capture(r,null);
+    r._flash=Date.now(); SFX.gong();
+    Game.toast(`🏯 克 ${r.name}！王师入城镇守。`); Game.logMsg(`天下：攻取 ${r.name}，疆域 +1。`);
+  }else{
+    if(u){ u.hp=Math.max(0,Math.round(u.hp*((res&&res.ourHP||40)/100)));
+      if(u.hp<=0){ M().units=M().units.filter(x=>x.id!==uid); Game.toast(`攻 ${r.name} 失利，全军覆没……`); }
+      else Game.toast(`攻 ${r.name} 受挫，折损而还（余气 ${u.hp}）。`); }
+    r.garrison=Math.max(0,r.garrison-R.i(3,9));
   }
-  msg+=`（我军余 ${u.hp}）`;
-  if(r.garrison<=0){ capture(r,u); SFX.gong();
-    Game.toast(`克 ${r.name}！${UNIT_TYPES[u.type].name}入城镇守。`);
-    Game.logMsg(`天下：攻取 ${r.name}，疆域 +1。`);
-  }else{ SFX.deal(); Game.toast(msg+`，守军未溃（余 ${r.garrison}）。`); }
-  UI.renderPanel("map");
+  M().selU=null; UI.renderHUD&&UI.renderHUD(); Game.save&&Game.save();
+  if(UI.openPanel) UI.openPanel("map");
+}
+/* 即时判定（无头兜底·单位制持续围攻） */
+function quickAssault(u,r){
+  const def=defenseOf(r);
+  const dmgG=Math.max(3,Math.round((u.atk+unitAtkBonus())*R.rnd(0.7,1.15)));
+  const dmgU=Math.max(2,Math.round(def*0.32*R.rnd(0.7,1.15)));
+  r.garrison=Math.max(0,r.garrison-dmgG); u.hp=Math.max(0,u.hp-dmgU);
+  if(u.hp<=0){ M().units=M().units.filter(x=>x.id!==u.id); M().selU=null; SFX.bad();
+    Game.toast(`${UNIT_TYPES[u.type].name}攻 ${r.name} 力战不支，全军覆没！`); UI.renderPanel&&UI.renderPanel("map"); return; }
+  if(r.garrison<=0){ capture(r,u); r._flash=Date.now(); SFX.gong(); Game.toast(`克 ${r.name}！`); }
+  else { SFX.deal(); Game.toast(`攻 ${r.name}，挫守备 ${dmgG}（敌余 ${r.garrison}·我余 ${u.hp}）。`); }
+  UI.renderPanel&&UI.renderPanel("map");
 }
 function capture(r,u){
   const s=Game.s; r.owner="self"; r.faction=null; r.garrison=0; r.explored=true;
+  initCity(r);                                          // 新附之州立城
   if(u){ u.rid=r.id; }                                  // 入城
   r.adj.forEach(aid=>{const a=region(aid); if(a)a.explored=true;});
-  s.nation.land=R.clamp(s.nation.land+R.i(2,5)); s.nation.prestige=R.clamp(s.nation.prestige+R.i(2,4));
+  const pmul=hasTech("unify")?2:1;
+  s.nation.land=R.clamp(s.nation.land+R.i(2,5)); s.nation.prestige=R.clamp(s.nation.prestige+R.i(2,4)*pmul);
   if(s.flags) s.flags.warWon=true; if(Game.tally) Game.tally("battlewin");
   // 胜利判定
   if(counts().own>=counts().total){ s.nation.prestige=R.clamp(s.nation.prestige+20);
@@ -199,14 +271,67 @@ function develop(id){
   Game.clampNation&&Game.clampNation(); UI.renderHUD&&UI.renderHUD(); Game.save&&Game.save(); UI.renderPanel("map");
 }
 
+/* ---------- 敌国 AI（P4）：补备 / 吞并中立扩张 / 袭扰边境 ---------- */
+function enemyTurn(s){
+  const m=s.map; let fell=null;
+  m.regions.forEach(r=>{
+    if(r.owner==="self"||r.owner==="neutral"||!r.faction) return;
+    if(R.chance(45)) r.garrison=Math.min(70, r.garrison+R.i(1,2));    // 补备
+    if(r.garrison<22) return;                                         // 弱州不出击
+    const neu  = r.adj.map(region).filter(a=>a&&a.owner==="neutral");
+    const mine = r.adj.map(region).filter(a=>a&&a.owner==="self"&&a.explored);
+    const atk = Math.round(r.garrison*0.5*R.rnd(0.8,1.2));
+    if(neu.length && R.chance(60)){                                   // 扩张：吞并中立
+      const t=neu.sort((a,b)=>a.garrison-b.garrison)[0];
+      t.garrison-=atk;
+      if(t.garrison<=0){ t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(14,20); r.garrison=Math.round(r.garrison*0.72); }
+    }else if(mine.length && R.chance(32)){                            // 袭扰：攻你边州
+      const t=mine.sort((a,b)=>defenseOf(a)-defenseOf(b))[0];
+      const guards=unitsIn(t.id,"self");
+      if(guards.length){ guards.forEach(u=>u.hp-=R.i(3,9)); m.units=m.units.filter(u=>u.hp>0);
+        r.garrison=Math.round(r.garrison*0.85);
+        Game.toast(`⚔ ${r.faction} 犯 ${t.name}，守军力拒！`); }
+      else { const d=defenseOf(t);
+        if(t.cap){ t.garrison=Math.max(0,(t.garrison|0)); Game.toast(`⚠ ${r.faction} 兵临 ${t.name}！京畿告急，速遣援军！`); }  // 都城不被一击夺
+        else if(atk>d){ t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(12,18);
+          t.build={farm:0,market:0,barracks:0,wall:0,academy:0}; t.queue=[]; t.store=0; t.dev=Math.max(0,t.dev-1);
+          fell=t.name; r.garrison=Math.round(r.garrison*0.7); }
+      }
+    }
+  });
+  if(fell){ Game.logMsg(`【边警】${fell} 失陷于敌！`); }
+}
+
 /* ---------- 结束回合 ---------- */
 function endTurn(){
-  const s=Game.s, m=M();
-  m.units.forEach(u=>{ if(u.owner==="self") u.movesLeft=UNIT_TYPES[u.type].move; });  // 复位机动
-  // 敌州缓慢补备（P4 接真 AI）
-  m.regions.forEach(r=>{ if(r.owner!=="self" && R.chance(22)) r.garrison=Math.min(60,r.garrison+1); });
+  const s=Game.s, m=M(), n=s.nation;
+  // 1) 城池产能 → 推进建造队列
+  let foodY=0, taxY=0, research=0;
+  m.regions.forEach(r=>{ if(r.owner!=="self") return; initCity(r);
+    const p=prodOf(r); if(r.queue.length){ const it=r.queue[0]; it.left-=p;
+      if(it.left<=0){ completeBuild(s,r,it); r.queue.shift(); } }
+    // 建筑每回合产出
+    foodY += (r.build.farm||0)*2*(hasTech("farming")?1.5:1) + (r.terrain==="平原"||r.terrain==="水乡"?r.dev:0);
+    taxY  += (r.build.market||0)*2*(hasTech("commerce")?1.5:1) + Math.ceil((r.dev+1)/2);
+    research += (r.build.academy||0)*1;
+  });
+  n.food=R.clamp(n.food+Math.round(foodY*0.5)); n.treasury=R.clamp(n.treasury+Math.round(taxY*0.5));
+  // 2) 科技研究推进
+  research += 1 + (hasTech("academy")?1:0);
+  if(m.tech.cur){ m.tech.pts+=research; const tech=TECH[m.tech.cur];
+    if(tech && m.tech.pts>=tech.cost){ m.tech.done.push(m.tech.cur); m.tech.pts-=tech.cost;
+      Game.toast(`国策大成：${tech.name}！`); Game.logMsg(`研习国策《${tech.name}》成。`); m.tech.cur=null; } }
+  // 3) 复位军队机动 + 敌AI（P4）
+  m.units.forEach(u=>{ if(u.owner==="self") u.movesLeft=moveOf(u); });
+  enemyTurn(s);
   m.turn++; m.selU=null; SFX.deal();
+  Game.clampNation&&Game.clampNation(); UI.renderHUD&&UI.renderHUD(); Game.save&&Game.save();
   Game.toast(`天下 · 第 ${m.turn} 回合`); UI.renderPanel("map");
+}
+function completeBuild(s,r,it){
+  if(it.kind==="unit"){ if(unitsIn(r.id,"self").length<3){ spawn(s,r.id,it.key); Game.toast(`${r.name} 练成${it.name}！`); }
+    else Game.toast(`${r.name} 屯兵已满，${it.name}暂遣散`); }
+  else { r.build[it.key]=(r.build[it.key]||0)+1; Game.toast(`${r.name} ${it.name} 建成！`); }
 }
 
 /* ---------- 渲染 ---------- */
@@ -231,6 +356,7 @@ function svgMap(s){
       <rect x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="${col}" fill-opacity="${r.owner==="self"?0.95:(r.explored?0.7:0.4)}" stroke="${stroke}" stroke-width="${sw}"/>
       ${canMoveHere?`<rect x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="#5ad1ff" fill-opacity="0.18"/>`:""}
       ${canAtkHere?`<rect x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="#ff5a4a" fill-opacity="0.16"/>`:""}
+      ${(r._flash&&Date.now()-r._flash<1600)?`<rect class="cap-flash" x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="none" stroke="#f6dd96" stroke-width="3"/>`:""}
       <text x="${r.x}" y="${r.y-3}" text-anchor="middle" font-size="13" fill="#1a120b" font-weight="700">${r.cap?"♔":""}${r.name}</text>
       <text x="${r.x}" y="${r.y+9}" text-anchor="middle" font-size="8.5" fill="#1a120bbb">${sub}</text>
       ${myU.length?`<g>${myU.map((u,i)=>`<circle cx="${r.x-22+i*11}" cy="${r.y+15}" r="5" fill="${u.id===m.selU?'#fff':'#2a4a8a'}" stroke="#f6dd96" stroke-width="1"/><text x="${r.x-22+i*11}" y="${r.y+18}" text-anchor="middle" font-size="7" fill="${u.id===m.selU?'#2a4a8a':'#fff'}" font-weight="700">${UNIT_TYPES[u.type].icon}</text>`).join("")}</g>`:""}
@@ -242,42 +368,66 @@ function svgMap(s){
 }
 function actionCard(s){
   const m=s.map, r=m.sel?region(m.sel):null;
-  if(!r) return `<p class="panel-tip wf-hint">⚑ <b>如何征服天下</b>：①点己方州(金)选一支军队「⚑出征」②点蓝色高亮州移动、点红色高亮州攻取 ③攻克相邻敌州即纳入疆域 ④点「结束回合」恢复军队机动。<br>★=开发度 · 守=敌守备 · ♔=都城 · 目标：吞并全部 ${counts().total} 州。</p>`;
+  if(!r) return `<p class="panel-tip wf-hint">⚑ <b>如何征服天下</b>：①点己方州(金)→城池可<b>营建</b>(建筑/编练军队)、<b>开发</b>②点州中军队「⚑出征」→ 蓝格移动·红格攻取(开沙盘战棋亲征)③攻克敌州即纳疆域④「结束回合」城池出产能、研国策、敌国会扩张反击。<br>★=开发 · 守=守备 · ♔=都城 · 目标：吞并全部 ${counts().total} 州。</p>`;
   const ownTxt=r.owner==="self"?"<b>我朝</b>":(r.owner==="neutral"?"中立":r.faction||r.owner);
-  let h=`<div class="region-card"><div class="m-head"><b>${r.cap?"♔ ":""}${r.name}</b><span class="m-post">${r.terrain}</span></div>`;
-  if(r.explored){
-    h+=`<div class="m-line">归属 ${ownTxt}　${r.owner==="self"?("开发度 "+r.dev):("守备 "+defenseOf(r)+"（含地利）")}</div>`;
-  }else h+=`<div class="m-line">归属 ${ownTxt} · 敌情不明</div>`;
-  // 我军单位列表
+  let h=`<div class="region-card"><div class="m-head"><b>${r.cap?"♔ ":""}${r.name}</b><span class="m-post">${r.terrain}${r.owner==="self"?` · 产能 ${prodOf(r)}/回合`:""}</span></div>`;
+  if(r.explored) h+=`<div class="m-line">归属 ${ownTxt}　${r.owner==="self"?("开发度 "+r.dev):("守备 "+defenseOf(r)+"（含地利）")}</div>`;
+  else h+=`<div class="m-line">归属 ${ownTxt} · 敌情不明</div>`;
   const myU=unitsIn(r.id,"self");
   if(myU.length){ h+=`<div class="unit-row">`+myU.map(u=>{const t=UNIT_TYPES[u.type];
     return `<button class="unit-chip ${u.id===m.selU?'on':''}" onclick="MapSys.selectUnit('${u.id}')" title="点选此军，再点高亮州移动/攻取">
-      ${t.icon} ${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?' ⚑出征中':''}</button>`;}).join("")+`</div>`; }
-  // 动作
-  let btns="";
+      ${t.icon}${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?' ⚑':''}</button>`;}).join("")+`</div>`; }
   if(r.owner==="self"){
-    btns+=`<button class="chip" onclick="MapSys.recruit('${r.id}','bu')">募步军(库8粮6兵4)</button>`;
-    btns+=`<button class="chip" onclick="MapSys.recruit('${r.id}','qi')">募骑军(库13粮8兵5)</button>`;
-    btns+= r.dev<3?`<button class="chip" onclick="MapSys.develop('${r.id}')">开发(库${10*(r.dev+1)})</button>`:`<span class="chip" style="opacity:.5">已极繁华</span>`;
+    initCity(r);
+    // 营建队列
+    if(r.queue.length){ h+=`<div class="build-q">`+r.queue.map((it,i)=>{const pct=Math.round((1-it.left/it.cost)*100);
+      return `<span class="bq-item"><b>${it.name}</b><span class="bq-bar"><u style="width:${pct}%"></u></span><button onclick="MapSys.cancelQueue('${r.id}',${i})">✕</button></span>`;}).join("")+`</div>`; }
+    // 建筑
+    h+=`<div class="build-grid">`+Object.values(BUILDINGS).map(b=>{const lv=r.build[b.key]||0;
+      const full=lv>=b.max; return `<button class="bld ${full?'full':''}" ${full?'disabled':''} onclick="MapSys.queueBuild('${r.id}','${b.key}')" title="${b.desc}（建造产能 ${b.build}）">${b.icon}${b.name} <i>${lv}/${b.max}</i></button>`;}).join("")+`</div>`;
+    // 编练军队
+    h+=`<div class="post-row">`+Object.values(UNIT_TYPES).map(t=>{const locked=t.reqTech&&!hasTech(t.reqTech);
+      return `<button class="chip ${locked?'':'gold'}" ${locked?'disabled':''} onclick="MapSys.queueUnit('${r.id}','${t.key}')" title="${locked?'需国策解锁':'编练（产能 '+t.build+'）'}">${t.icon}${t.name}${locked?'🔒':' ✦'+t.build}</button>`;}).join("")
+      + (r.dev<3?`<button class="chip" onclick="MapSys.develop('${r.id}')">开发(库${10*(r.dev+1)})</button>`:`<span class="chip" style="opacity:.5">极繁华</span>`)
+      +`</div>`;
   }else if(bordersSelf(r)){
-    if(!r.explored) btns+=`<button class="chip" onclick="MapSys.explore('${r.id}')">遣使探索</button>`;
-    else btns+=`<span class="panel-tip" style="display:inline">⚔ 选一支相邻我军，点此州攻取（红色高亮）。</span>`;
-  }else btns+=`<span class="panel-tip" style="display:inline">需先取下相邻州郡，方可用兵于此。</span>`;
-  h+=`<div class="post-row">${btns}</div></div>`;
+    h+= !r.explored ? `<div class="post-row"><button class="chip" onclick="MapSys.explore('${r.id}')">遣使探索</button></div>`
+      : `<p class="panel-tip" style="margin:6px 0 0">⚔ 选一支相邻我军，点此州（红色高亮）发起攻城。</p>`;
+  }else h+=`<p class="panel-tip" style="margin:6px 0 0">需先取下相邻州郡，方可用兵于此。</p>`;
+  h+=`</div>`;
   return h;
 }
+/* 国策科技树弹窗 */
+function techPanelHTML(){
+  const m=M(), t=m.tech;
+  let h=`<div class="techtree"><h2 class="tt-h">📜 国 策</h2>
+    <div class="tt-cur">${t.cur?`研习中：<b>${TECH[t.cur].name}</b> ${t.pts}/${TECH[t.cur].cost}`:'未择国策（点选下方研习）'} · 每回合积累研究点</div>
+    <div class="tt-grid">`;
+  Object.values(TECH).forEach(tc=>{
+    const done=hasTech(tc.key), avail=techAvailable(tc.key)&&!done, cur=t.cur===tc.key;
+    const cls=done?"done":(cur?"cur":(avail?"avail":"lock"));
+    const reqTxt=tc.req.length?`<i>需 ${tc.req.map(k=>TECH[k].name).join("·")}</i>`:"";
+    h+=`<button class="tt-node ${cls}" ${(done||(!avail&&!cur))?'disabled':''} onclick="MapSys.startResearch('${tc.key}')">
+      <b>${tc.name}</b>${done?' ✓':cur?' ⏳':''}<span>${tc.desc}</span>${reqTxt}<em>${tc.cost}研</em></button>`;
+  });
+  h+=`</div></div>`; return h;
+}
+function openTech(){ UI.openModal(techPanelHTML()); }
 function renderBody(s){
-  const c=counts(); const pct=Math.round(c.own/c.total*100);
-  const m=s.map;
+  const c=counts(); const pct=Math.round(c.own/c.total*100); const m=s.map;
+  const tcur=m.tech&&m.tech.cur?`研${TECH[m.tech.cur].name.slice(0,2)} ${m.tech.pts}/${TECH[m.tech.cur].cost}`:"国策";
   return `<div class="map-top">
-      <div class="map-goal"><span>一统进度</span><div class="goal-bar"><i style="width:${pct}%"></i></div><b>${c.own}/${c.total} 州</b></div>
-      <div class="map-turn">天下 · 第 <b>${m.turn||1}</b> 回合 <button class="btn btn-primary turn-btn" onclick="MapSys.endTurn()">结束回合 ▶</button></div>
+      <div class="map-goal"><span>一统</span><div class="goal-bar"><i style="width:${pct}%"></i></div><b>${c.own}/${c.total}</b></div>
+      <div class="map-turn">第 <b>${m.turn||1}</b> 回合
+        <button class="chip gold" onclick="MapSys.openTech()">📜 ${tcur}</button>
+        <button class="btn btn-primary turn-btn" onclick="MapSys.endTurn()">结束回合 ▶</button></div>
     </div>
     ${svgMap(s)}
     <div id="map-action">${actionCard(s)}</div>`;
 }
 
-return {initState, produce, growEnemies, selectRegion, selectUnit, recruit, explore, develop, endTurn,
-  renderBody, counts, REGIONS, UNIT_TYPES};
+return {initState, produce, growEnemies, selectRegion, selectUnit, explore, develop, endTurn,
+  queueUnit, queueBuild, cancelQueue, startResearch, openTech, resolveAssault, quickAssault,
+  renderBody, counts, REGIONS, UNIT_TYPES, TECH, BUILDINGS};
 })();
 if(typeof globalThis!=="undefined") globalThis.MapSys=MapSys;
