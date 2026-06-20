@@ -12,10 +12,10 @@ const BattleSys = (() => {
 
 /* 四战术：atk=攻击系数，def=受创系数（越低越抗打） */
 const TACTICS = {
-  atk: {key:"atk", name:"强攻", icon:"⚔", desc:"猛攻突进，伤敌多、自损亦多", atk:1.30, def:1.20},
-  def: {key:"def", name:"坚守", icon:"🛡", desc:"结阵固守，自损少、伤敌亦少", atk:0.70, def:0.62},
-  amb: {key:"amb", name:"设伏", icon:"🌑", desc:"诱敌设伏，均衡，专克强攻",   atk:1.00, def:0.90},
-  raid:{key:"raid",name:"突袭", icon:"🐎", desc:"轻骑突袭，爆发，专克坚守",   atk:1.22, def:1.08}
+  atk: {key:"atk", name:"强攻", icon:"攻", desc:"猛攻突进，伤敌多、自损亦多", atk:1.30, def:1.20},
+  def: {key:"def", name:"坚守", icon:"守", desc:"结阵固守，自损少、伤敌亦少", atk:0.70, def:0.62},
+  amb: {key:"amb", name:"设伏", icon:"伏", desc:"诱敌设伏，均衡，专克强攻",   atk:1.00, def:0.90},
+  raid:{key:"raid",name:"突袭", icon:"袭", desc:"轻骑突袭，爆发，专克坚守",   atk:1.22, def:1.08}
 };
 /* x 克 BEATS[x]：攻克突 · 突克守 · 守克伏 · 伏克攻 */
 const BEATS = {atk:"raid", raid:"def", def:"amb", amb:"atk"};
@@ -94,11 +94,11 @@ function render(){
   const ene  = bar(`${B.enemy} 兵势`, B.enemyHP, "enemy");
   let actions;
   if(B.over){
-    actions = `<div class="bt-end ${B.win?"win":"lose"}">${B.win?"⚑ 凯　旋":"✖ 败　北"}</div>
+    actions = `<div class="bt-end ${B.win?"win":"lose"}">${B.win?"凯　旋":"败　北"}</div>
       <button class="btn btn-primary bt-go" id="bt-finish">${B.win?"献　俘　受　降":"收　拾　残　局"}</button>`;
   }else{
     const sc=TACTICS[B.scout];
-    actions = `<div class="bt-scout">🔎 斥候回报：敌军似将「<b>${sc?sc.name:"?"}</b>」 <em>${B.scoutSure?"（探报确凿）":"（雾锁敌情，未必尽实）"}</em></div>
+    actions = `<div class="bt-scout">斥候回报：敌军似将「<b>${sc?sc.name:"?"}</b>」 <em>${B.scoutSure?"（探报确凿）":"（雾锁敌情，未必尽实）"}</em></div>
       <div class="bt-tip">第 ${B.round+1} 阵 · 择一战术克敌（攻克突·突克守·守克伏·伏克攻）</div>
       <div class="bt-tactics">`+TAC_KEYS.map(k=>{const t=TACTICS[k];
         return `<button class="bt-tac" data-k="${k}" title="${t.desc}"><i>${t.icon}</i><b>${t.name}</b><u>克${TACTICS[BEATS[k]].name}</u></button>`;
@@ -106,7 +106,7 @@ function render(){
   }
   const logHtml = B.log.slice(0,6).map((l,i)=>`<div class="bt-log-item${i===0&&!B.over?" fresh":""}">${l}</div>`).join("");
   const html = `<div class="battle">
-    <h2 class="bt-title">⚔ 沙　场　对　决</h2>
+    <h2 class="bt-title">沙　场　对　决</h2>
     <div class="bt-bars">${ours}${ene}</div>
     <div class="bt-actions">${actions}</div>
     <div class="bt-log">${logHtml}</div>

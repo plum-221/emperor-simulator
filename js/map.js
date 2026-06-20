@@ -55,11 +55,11 @@ const UNIT_TYPES = {
 };
 /* 城池建筑（每州可建·分级·建造耗产能·每回合产出反哺国家或加成） */
 const BUILDINGS = {
-  farm:    {key:"farm",   name:"农田", icon:"🌾", max:3, build:5, desc:"每回合产粮"},
-  market:  {key:"market", name:"市集", icon:"🪙", max:3, build:6, desc:"每回合入库"},
-  barracks:{key:"barracks",name:"兵营",icon:"🏯", max:3, build:7, desc:"+产能·解锁强兵"},
-  wall:    {key:"wall",   name:"城墙", icon:"🧱", max:3, build:6, desc:"+守备(被攻更难破)"},
-  academy: {key:"academy",name:"书院", icon:"📚", max:2, build:8, desc:"每回合+研究点"}
+  farm:    {key:"farm",   name:"农田", icon:"农", max:3, build:5, desc:"每回合产粮"},
+  market:  {key:"market", name:"市集", icon:"市", max:3, build:6, desc:"每回合入库"},
+  barracks:{key:"barracks",name:"兵营",icon:"营", max:3, build:7, desc:"+产能·解锁强兵"},
+  wall:    {key:"wall",   name:"城墙", icon:"城", max:3, build:6, desc:"+守备(被攻更难破)"},
+  academy: {key:"academy",name:"书院", icon:"学", max:2, build:8, desc:"每回合+研究点"}
 };
 /* 国策/科技树（P3·研究点逐回合积累解锁） */
 const TECH = {
@@ -206,7 +206,7 @@ function resolveAssault(uid, rid, res){
   if(res && res.win){
     if(u) capture(r,u); else capture(r,null);
     r._flash=Date.now(); SFX.gong();
-    Game.toast(`🏯 克 ${r.name}！王师入城镇守。`); Game.logMsg(`天下：攻取 ${r.name}，疆域 +1。`);
+    Game.toast(`克 ${r.name}！王师入城镇守。`); Game.logMsg(`天下：攻取 ${r.name}，疆域 +1。`);
   }else{
     if(u){ u.hp=Math.max(0,Math.round(u.hp*((res&&res.ourHP||40)/100)));
       if(u.hp<=0){ M().units=M().units.filter(x=>x.id!==uid); Game.toast(`攻 ${r.name} 失利，全军覆没……`); }
@@ -238,7 +238,7 @@ function capture(r,u){
   if(s.flags) s.flags.warWon=true; if(Game.tally) Game.tally("battlewin");
   // 胜利判定
   if(counts().own>=counts().total){ s.nation.prestige=R.clamp(s.nation.prestige+20);
-    Game.toast("🏆 六合归一，天下一统！"); Game.logMsg("【天下一统】普天之下，莫非王土！"); if(s.flags)s.flags.unified=true; }
+    Game.toast("六合归一，天下一统！"); Game.logMsg("【天下一统】普天之下，莫非王土！"); if(s.flags)s.flags.unified=true; }
   UI.renderHUD&&UI.renderHUD(); Game.save&&Game.save();
 }
 
@@ -290,9 +290,9 @@ function enemyTurn(s){
       const guards=unitsIn(t.id,"self");
       if(guards.length){ guards.forEach(u=>u.hp-=R.i(3,9)); m.units=m.units.filter(u=>u.hp>0);
         r.garrison=Math.round(r.garrison*0.85);
-        Game.toast(`⚔ ${r.faction} 犯 ${t.name}，守军力拒！`); }
+        Game.toast(`${r.faction} 犯 ${t.name}，守军力拒！`); }
       else { const d=defenseOf(t);
-        if(t.cap){ t.garrison=Math.max(0,(t.garrison|0)); Game.toast(`⚠ ${r.faction} 兵临 ${t.name}！京畿告急，速遣援军！`); }  // 都城不被一击夺
+        if(t.cap){ t.garrison=Math.max(0,(t.garrison|0)); Game.toast(`${r.faction} 兵临 ${t.name}！京畿告急，速遣援军！`); }  // 都城不被一击夺
         else if(atk>d){ t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(12,18);
           t.build={farm:0,market:0,barracks:0,wall:0,academy:0}; t.queue=[]; t.store=0; t.dev=Math.max(0,t.dev-1);
           fell=t.name; r.garrison=Math.round(r.garrison*0.7); }
@@ -357,7 +357,7 @@ function svgMap(s){
       ${canMoveHere?`<rect x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="#5ad1ff" fill-opacity="0.18"/>`:""}
       ${canAtkHere?`<rect x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="#ff5a4a" fill-opacity="0.16"/>`:""}
       ${(r._flash&&Date.now()-r._flash<1600)?`<rect class="cap-flash" x="${r.x-31}" y="${r.y-19}" width="62" height="38" rx="8" fill="none" stroke="#f6dd96" stroke-width="3"/>`:""}
-      <text x="${r.x}" y="${r.y-3}" text-anchor="middle" font-size="13" fill="#1a120b" font-weight="700">${r.cap?"♔":""}${r.name}</text>
+      <text x="${r.x}" y="${r.y-3}" text-anchor="middle" font-size="13" fill="#1a120b" font-weight="700">${r.cap?"都":""}${r.name}</text>
       <text x="${r.x}" y="${r.y+9}" text-anchor="middle" font-size="8.5" fill="#1a120bbb">${sub}</text>
       ${myU.length?`<g>${myU.map((u,i)=>`<circle cx="${r.x-22+i*11}" cy="${r.y+15}" r="5" fill="${u.id===m.selU?'#fff':'#2a4a8a'}" stroke="#f6dd96" stroke-width="1"/><text x="${r.x-22+i*11}" y="${r.y+18}" text-anchor="middle" font-size="7" fill="${u.id===m.selU?'#2a4a8a':'#fff'}" font-weight="700">${UNIT_TYPES[u.type].icon}</text>`).join("")}</g>`:""}
     </g>`;
@@ -368,15 +368,15 @@ function svgMap(s){
 }
 function actionCard(s){
   const m=s.map, r=m.sel?region(m.sel):null;
-  if(!r) return `<p class="panel-tip wf-hint">⚑ <b>如何征服天下</b>：①点己方州(金)→城池可<b>营建</b>(建筑/编练军队)、<b>开发</b>②点州中军队「⚑出征」→ 蓝格移动·红格攻取(开沙盘战棋亲征)③攻克敌州即纳疆域④「结束回合」城池出产能、研国策、敌国会扩张反击。<br>★=开发 · 守=守备 · ♔=都城 · 目标：吞并全部 ${counts().total} 州。</p>`;
+  if(!r) return `<p class="panel-tip wf-hint"><b>如何征服天下</b>：①点己方州(金)→城池可<b>营建</b>(建筑/编练军队)、<b>开发</b>②点州中军队「出征」→ 蓝格移动·红格攻取(开沙盘战棋亲征)③攻克敌州即纳疆域④「结束回合」城池出产能、研国策、敌国会扩张反击。<br>★=开发 · 守=守备 · 「都」=都城 · 目标：吞并全部 ${counts().total} 州。</p>`;
   const ownTxt=r.owner==="self"?"<b>我朝</b>":(r.owner==="neutral"?"中立":r.faction||r.owner);
-  let h=`<div class="region-card"><div class="m-head"><b>${r.cap?"♔ ":""}${r.name}</b><span class="m-post">${r.terrain}${r.owner==="self"?` · 产能 ${prodOf(r)}/回合`:""}</span></div>`;
+  let h=`<div class="region-card"><div class="m-head"><b>${r.cap?"都 ":""}${r.name}</b><span class="m-post">${r.terrain}${r.owner==="self"?` · 产能 ${prodOf(r)}/回合`:""}</span></div>`;
   if(r.explored) h+=`<div class="m-line">归属 ${ownTxt}　${r.owner==="self"?("开发度 "+r.dev):("守备 "+defenseOf(r)+"（含地利）")}</div>`;
   else h+=`<div class="m-line">归属 ${ownTxt} · 敌情不明</div>`;
   const myU=unitsIn(r.id,"self");
   if(myU.length){ h+=`<div class="unit-row">`+myU.map(u=>{const t=UNIT_TYPES[u.type];
     return `<button class="unit-chip ${u.id===m.selU?'on':''}" onclick="MapSys.selectUnit('${u.id}')" title="点选此军，再点高亮州移动/攻取">
-      ${t.icon}${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?' ⚑':''}</button>`;}).join("")+`</div>`; }
+      ${t.icon}${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?'·征':''}</button>`;}).join("")+`</div>`; }
   if(r.owner==="self"){
     initCity(r);
     // 营建队列
@@ -387,12 +387,12 @@ function actionCard(s){
       const full=lv>=b.max; return `<button class="bld ${full?'full':''}" ${full?'disabled':''} onclick="MapSys.queueBuild('${r.id}','${b.key}')" title="${b.desc}（建造产能 ${b.build}）">${b.icon}${b.name} <i>${lv}/${b.max}</i></button>`;}).join("")+`</div>`;
     // 编练军队
     h+=`<div class="post-row">`+Object.values(UNIT_TYPES).map(t=>{const locked=t.reqTech&&!hasTech(t.reqTech);
-      return `<button class="chip ${locked?'':'gold'}" ${locked?'disabled':''} onclick="MapSys.queueUnit('${r.id}','${t.key}')" title="${locked?'需国策解锁':'编练（产能 '+t.build+'）'}">${t.icon}${t.name}${locked?'🔒':' ✦'+t.build}</button>`;}).join("")
+      return `<button class="chip ${locked?'':'gold'}" ${locked?'disabled':''} onclick="MapSys.queueUnit('${r.id}','${t.key}')" title="${locked?'需国策解锁':'编练（产能 '+t.build+'）'}">${t.icon}${t.name}${locked?'锁':' ✦'+t.build}</button>`;}).join("")
       + (r.dev<3?`<button class="chip" onclick="MapSys.develop('${r.id}')">开发(库${10*(r.dev+1)})</button>`:`<span class="chip" style="opacity:.5">极繁华</span>`)
       +`</div>`;
   }else if(bordersSelf(r)){
     h+= !r.explored ? `<div class="post-row"><button class="chip" onclick="MapSys.explore('${r.id}')">遣使探索</button></div>`
-      : `<p class="panel-tip" style="margin:6px 0 0">⚔ 选一支相邻我军，点此州（红色高亮）发起攻城。</p>`;
+      : `<p class="panel-tip" style="margin:6px 0 0">选一支相邻我军，点此州（红色高亮）发起攻城。</p>`;
   }else h+=`<p class="panel-tip" style="margin:6px 0 0">需先取下相邻州郡，方可用兵于此。</p>`;
   h+=`</div>`;
   return h;
@@ -400,7 +400,7 @@ function actionCard(s){
 /* 国策科技树弹窗 */
 function techPanelHTML(){
   const m=M(), t=m.tech;
-  let h=`<div class="techtree"><h2 class="tt-h">📜 国 策</h2>
+  let h=`<div class="techtree"><h2 class="tt-h">国 策</h2>
     <div class="tt-cur">${t.cur?`研习中：<b>${TECH[t.cur].name}</b> ${t.pts}/${TECH[t.cur].cost}`:'未择国策（点选下方研习）'} · 每回合积累研究点</div>
     <div class="tt-grid">`;
   Object.values(TECH).forEach(tc=>{
@@ -408,7 +408,7 @@ function techPanelHTML(){
     const cls=done?"done":(cur?"cur":(avail?"avail":"lock"));
     const reqTxt=tc.req.length?`<i>需 ${tc.req.map(k=>TECH[k].name).join("·")}</i>`:"";
     h+=`<button class="tt-node ${cls}" ${(done||(!avail&&!cur))?'disabled':''} onclick="MapSys.startResearch('${tc.key}')">
-      <b>${tc.name}</b>${done?' ✓':cur?' ⏳':''}<span>${tc.desc}</span>${reqTxt}<em>${tc.cost}研</em></button>`;
+      <b>${tc.name}</b>${done?' ✓':cur?' 研':''}<span>${tc.desc}</span>${reqTxt}<em>${tc.cost}研</em></button>`;
   });
   h+=`</div></div>`; return h;
 }
@@ -419,7 +419,7 @@ function renderBody(s){
   return `<div class="map-top">
       <div class="map-goal"><span>一统</span><div class="goal-bar"><i style="width:${pct}%"></i></div><b>${c.own}/${c.total}</b></div>
       <div class="map-turn">第 <b>${m.turn||1}</b> 回合
-        <button class="chip gold" onclick="MapSys.openTech()">📜 ${tcur}</button>
+        <button class="chip gold" onclick="MapSys.openTech()">${tcur}</button>
         <button class="btn btn-primary turn-btn" onclick="MapSys.endTurn()">结束回合 ▶</button></div>
     </div>
     ${svgMap(s)}

@@ -42,13 +42,13 @@ function openImpeach(id){
   const top = charges.slice().sort((a,b)=>b.sev-a.sev)[0];
   const cname = top ? top.name : "";
   let h=`<div class="impeach">
-    <h2 class="imp-h">⚖ 问 罪</h2>
+    <h2 class="imp-h">问 罪</h2>
     <div class="imp-who">${img(m.portrait,"imp-face")}
       <div><div class="imp-name"><b>${m.name}</b><span>${m.title||""}</span></div>
       <div class="imp-loy">表面忠诚 ${Math.round(m.loyalty)}</div></div></div>`;
   if(charges.length){
     h+=`<div class="imp-sec">查得罪证</div><div class="imp-charges">`+
-      charges.map(c=>`<div class="imp-charge sev${c.sev}">⚖ ${c.name}</div>`).join("")+`</div>`;
+      charges.map(c=>`<div class="imp-charge sev${c.sev}">${c.name}</div>`).join("")+`</div>`;
     h+=`<p class="imp-tip">罪证确凿，问罪有据，朝纲得正。</p>
       <div class="imp-acts">
         <button class="btn warn" onclick="Game.dismissMinister('${m.id}','${cname}')">依律罢黜</button>
@@ -58,7 +58,7 @@ function openImpeach(id){
     h+=`<div class="imp-sec">查无实据</div>
       <p class="imp-tip warn-tip">经查，${m.name} 持身尚正，并无确凿罪证。<b>妄诛忠良必失天下人心。</b><br>欲知其私行，可遣<b>密谍司</b>密察。</p>
       <div class="imp-acts">
-        <button class="btn ghost" onclick="UI.closeModal();UI.openSpy()">⟁ 遣密谍司查察</button>
+        <button class="btn ghost" onclick="UI.closeModal();UI.openSpy()">遣密谍司查察</button>
         <button class="btn warn" onclick="Game.dismissMinister('${m.id}','')">无故罢黜（百官寒心）</button>
       </div>
       <p class="imp-note">※ 无罪证不可处死；强行罢黜将折损威望、百官离心。</p>`;
@@ -67,7 +67,7 @@ function openImpeach(id){
   openModal(h);
 }
 
-/* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 📜 打开） */
+/* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 详 打开） */
 function openCharacter(id){
   const s=Game.s; const m=s.ministers.find(x=>x.id===id||x.castId===id); if(!m) return;
   const tg=(typeof rarityOf!=="undefined")?rarityOf(m):GACHA.tiers[m.tier||"mid"];
@@ -154,7 +154,7 @@ function showEvent(card){
   const text=typeof card.text==="function"?card.text(s):card.text;
   const title=typeof card.title==="function"?card.title(s):card.title;
   const choices=card.choices.filter(c=>!c.cond||c.cond(s));
-  const banner=card.big?`<div class="ev-banner">⚠ 大 事 件 · 国 之 存 亡</div>`:"";
+  const banner=card.big?`<div class="ev-banner">大 事 件 · 国 之 存 亡</div>`:"";
   $("event-area").innerHTML=`
     <div class="ev-card${card.big?" big":""}">
       ${banner}
@@ -181,7 +181,7 @@ function showMonth(){
   const ph=PHASES[n.phase||0]||PHASES[0];
   let questLine="";
   if(typeof QuestSys!=="undefined"&&s.quest){ const q=QuestSys.curMain(s);
-    questLine=q?`<p class="month-quest">📜 当前大业：<b>${q.name}</b> —— ${q.desc}</p>`:`<p class="month-quest">📜 中兴大业已成，名垂青史。</p>`; }
+    questLine=q?`<p class="month-quest">当前大业：<b>${q.name}</b> —— ${q.desc}</p>`:`<p class="month-quest">中兴大业已成，名垂青史。</p>`; }
   $("event-area").innerHTML=`
     <div class="month-card">
       <h3>${ph.icon} ${n.year}年${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.name}</h3>
@@ -199,8 +199,8 @@ function showMonth(){
 /* ---------- 行动 ---------- */
 function renderActions(){
   const s=Game.s;
-  if(s.pendingEvent){ $("action-area").innerHTML=`<p class="act-hint">⚑ 请先在上方处理朝政奏折</p>`; return; }
-  const ff=`<button class="act-ff" id="btn-ff">⏩ 快进至下一事件 / 月末</button>`;
+  if(s.pendingEvent){ $("action-area").innerHTML=`<p class="act-hint">请先在上方处理朝政奏折</p>`; return; }
+  const ff=`<button class="act-ff" id="btn-ff">快进至下一事件 / 月末</button>`;
   if(s.actedThisTurn){ $("action-area").innerHTML=`<p class="act-hint">✔ 此时段已行一事，可「下一时段」</p>`+ff; }
   else{
     const curPh=PHASES[s.nation.phase||0].key;
@@ -244,14 +244,14 @@ function renderPanel(name){
       </div>
       <div class="recruit-bar">
         <div class="rc-info"><b>武库</b><span>已得武器 <b>${owned.length}</b>/${WEAPONS.length} · 抽中已有→碎片。佩于将相提其文/武。</span></div>
-        <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<GACHA.cost?"disabled":""} onclick="Game.weaponDraw()">铸兵 ⚔ ${GACHA.cost}点</button>
+        <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<GACHA.cost?"disabled":""} onclick="Game.weaponDraw()">铸兵 ${GACHA.cost}点</button>
       </div>`;
       // 密谍司
       const spyEst=(typeof SpySys!=="undefined")&&SpySys.established(s);
       const spyAlert=spyEst&&s.ministers.some(m=>m.secret&&(m.secret.cabal.progress>=55||m.secret.treason>=45));
       h+=`<div class="recruit-bar spy-bar${spyAlert?' alert':''}">
-        <div class="rc-info"><b>⟁ 密谍司</b><span>${spyEst?`司阶 <b>Lv${s.spy.level}</b> · 眼线 ${(s.spy.watch||[]).length}/${1+(s.spy.level||1)}。密察百官私行，每夜戌时密呈。`:'设耳目于朝野，密察 结党/贪墨/通敌/构陷，每夜密报真账。'}</span></div>
-        <button class="btn btn-primary rc-btn" onclick="UI.openSpy()">${spyEst?(spyAlert?'⚠ 密谍司':'密谍司'):'设立 ⟁'}</button>
+        <div class="rc-info"><b>密谍司</b><span>${spyEst?`司阶 <b>Lv${s.spy.level}</b> · 眼线 ${(s.spy.watch||[]).length}/${1+(s.spy.level||1)}。密察百官私行，每夜戌时密呈。`:'设耳目于朝野，密察 结党/贪墨/通敌/构陷，每夜密报真账。'}</span></div>
+        <button class="btn btn-primary rc-btn" onclick="UI.openSpy()">${spyEst?(spyAlert?'密谍司':'密谍司'):'设立密谍司'}</button>
       </div>`;
       if(owned.length) h+=`<div class="armory">`+owned.map(w=>{const tg=GACHA.tiers[w.tier];const on=s.ministers.find(x=>x.weapon===w.id);
         const lv=(s.weaponLv&&s.weaponLv[w.id])||0; const eff=w.bonus+lv*FORGE_STEP;
@@ -269,17 +269,17 @@ function renderPanel(name){
       const canBk=(m.level||1)>=5 && (m.tier||"low")!=="high";
       const bkBtn=selecting?"":`<button class="chip ${canBk&&(s.shards||0)>=8?"gold":""}" ${canBk?"":"disabled"} onclick="Game.breakthrough('${m.id}')" title="Lv5且非满星可突破·耗碎片8">突破 ⤴${canBk?" ✦8":""}</button>`;
       const wpSel=(!selecting&&owned.length)?`<select class="wp-sel" onchange="Game.equipWeapon('${m.id}',this.value)">
-        <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus+((s.weaponLv&&s.weaponLv[w.id])||0)*FORGE_STEP}</option>`).join("")+`</select>`:"";
+        <option value="">佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus+((s.weaponLv&&s.weaponLv[w.id])||0)*FORGE_STEP}</option>`).join("")+`</select>`:"";
       // 官职即身份：登朝自动就位、不可指派；赏赐/养成 + 问罪（须有罪证方可罢黜诛戮）
       const nCharges=Game.chargesAgainst(m).length;
       const postBtns=selecting?"":`<div class="post-row">`+
         `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+bkBtn+wpSel+
-        `<button class="chip ${nCharges?'danger':'warn'}" onclick="UI.openImpeach('${m.id}')" title="问罪：依密谍司查得之罪证罢黜或诛戮">⚖ 问罪${nCharges?` <em class="chg">${nCharges}</em>`:""}</button></div>`;
-      const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">⚔${w.name}</span>`:"";})():"";
+        `<button class="chip ${nCharges?'danger':'warn'}" onclick="UI.openImpeach('${m.id}')" title="问罪：依密谍司查得之罪证罢黜或诛戮">问罪${nCharges?` <em class="chg">${nCharges}</em>`:""}</button></div>`;
+      const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">${w.name}</span>`:"";})():"";
       return `<div class="m-card r${rar.r||1}" style="border-color:${rar.color};box-shadow:0 0 0 1px ${rar.color}${(rar.r||1)>=4?`,0 0 12px ${rar.glow}`:""}" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
         <div class="m-info">
-          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${rar.color}" title="${rar.name}">${rar.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">📜</button></div>
+          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${rar.color}" title="${rar.name}">${rar.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">详</button></div>
           <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil} <span class="m-lv">Lv${m.level||1}</span><span class="m-exp">${m.exp||0}/${(m.level||1)*10}</span></div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
@@ -326,7 +326,7 @@ function renderPanel(name){
             <div class="m-head"><b>${t.name}</b><span class="m-origin" style="color:${og.color}">${og.name}</span><span class="m-woo">偏好·${WOO_NAME[t.woo]}</span></div>
             <div class="m-line">心动 ${bar(r.aff,"#e0709a")} ${r.aff}/100</div>
             <div class="m-line woo-desc">${t.scenes.find((sc,i)=>!r.seen.includes(i))?("下一幕 心动达 "+t.scenes.find((sc,i)=>!r.seen.includes(i)).at):"情意渐浓…"}　特质·${t.trait.name}</div>
-            ${blocked?`<p class="woo-block">⚠ ${t.unlock.desc}——门第现已失势，暂难亲近</p>`:`<div class="post-row">
+            ${blocked?`<p class="woo-block">${t.unlock.desc}——门第现已失势，暂难亲近</p>`:`<div class="post-row">
               <button class="chip woo-btn" onclick="Game.wooConsort('${t.id}','meet')">相会（吃${WOO_NAME[t.woo]}）</button>
               <button class="chip woo-btn" ${gift?"disabled":""} onclick="Game.wooConsort('${t.id}','gift')">赠礼 ✦6</button>
             </div>`}
@@ -340,7 +340,7 @@ function renderPanel(name){
           return `<div class="m-card locked">
             <div class="m-face noface silh">？</div>
             <div class="m-info"><div class="m-head"><b>？？？</b><span class="m-origin" style="color:${og.color}">${og.name}</span></div>
-            <div class="m-line lock-cond">🔒 ${t.unlock.desc}</div></div></div>`;
+            <div class="m-line lock-cond">${t.unlock.desc}</div></div></div>`;
         }).join("");
       }
       h+=`<p class="panel-tip">※ 攻略行动在「后宫」面板进行，消耗当前时段。心动跨阈值触发剧情，终幕纳入后宫，赐予出身特质。临幸（开枝散叶）走底部行动·入夜可行。</p>`;
@@ -381,7 +381,7 @@ function renderPanel(name){
     if(!gens.length) h+=`<p class="panel-tip">朝中暂无武将，请于<b>朝堂·求贤</b>招募，或任命大将军。</p>`;
     gens.forEach(g=>{
       const on=campaignPick.has(g.id);
-      const wp=g.weapon?(()=>{const w=weaponById(g.weapon);return w?` ⚔${w.name}`:"";})():"";
+      const wp=g.weapon?(()=>{const w=weaponById(g.weapon);return w?` ${w.name}`:"";})():"";
       h+=`<button class="mus-card ${on?"on":""}" onclick="UI.pickCampaign('${g.id}')">
         ${img(g.portrait,"mus-face")}
         <span class="mus-info"><b>${g.name}</b><i>武略 ${g.mil}${g.post==="marshal"?" · 大将军":""}${wp}</i></span>
@@ -389,7 +389,7 @@ function renderPanel(name){
     });
     h+=`</div>
       <label class="mus-emp"><input type="checkbox" ${campaignEmperor?"checked":""} onclick="UI.toggleCampaignEmperor()"> 御驾亲征（陛下临阵·武力 ${Math.round(e.martial)}，强力但有风险）</label>
-      <button class="btn btn-primary mus-go" ${(campaignPick.size||campaignEmperor)?"":"disabled"} onclick="UI.doLaunchCampaign()">⚔ 点 将 出 征（${campaignPick.size}${campaignEmperor?"+帝":""}）</button>
+      <button class="btn btn-primary mus-go" ${(campaignPick.size||campaignEmperor)?"":"disabled"} onclick="UI.doLaunchCampaign()">点 将 出 征（${campaignPick.size}${campaignEmperor?"+帝":""}）</button>
       <p class="panel-tip">※ 沙盘上有平原/山丘/密林/河流，地形影响移动与防御。亦可坐等「番邦入寇」随机应战（仓促战术对决）。</p>`;
   }
   else if(name==="log"){
@@ -475,10 +475,10 @@ function openHelp(){
   openModal(`<h2>玩法说明</h2>
   <p>你是开国之君。每一回合（月）先<b>上朝</b>处理一桩朝政奏折，再择一项<b>行动</b>（勤政／读书习武／临幸后宫／召见群臣／休养），然后<b>下一回合</b>结算。</p>
   <h3>四大系统</h3>
-  <p>🏛️ <b>朝堂</b>：满朝文武各有文才武略、忠诚野心。任命丞相、大将军等要职，他们每回合为你增益国力；忠诚过低而野心过高者会<b>谋反</b>。</p>
-  <p>🏮 <b>后宫 / 皇嗣</b>：临幸嫔妃生育皇子公主，培养并<b>立太子</b>。帝王驾崩由太子继位，江山<b>世代相传</b>；绝嗣则亡国。</p>
-  <p>⚔️ <b>军务战争</b>：番邦入寇或主动北伐，遣大将军或御驾亲征，兵力＋将领武略决定胜负，胜则开疆拓土。</p>
-  <p>💰 <b>经济民生·科举外交</b>：国库靠民心疆域征税、养兵养官需开支；逢科举纳贤才、行和亲结盟好。</p>
+  <p><b>朝堂</b>：满朝文武各有文才武略、忠诚野心。任命丞相、大将军等要职，他们每回合为你增益国力；忠诚过低而野心过高者会<b>谋反</b>。</p>
+  <p><b>后宫 / 皇嗣</b>：临幸嫔妃生育皇子公主，培养并<b>立太子</b>。帝王驾崩由太子继位，江山<b>世代相传</b>；绝嗣则亡国。</p>
+  <p><b>军务战争</b>：番邦入寇或主动北伐，遣大将军或御驾亲征，兵力＋将领武略决定胜负，胜则开疆拓土。</p>
+  <p><b>经济民生·科举外交</b>：国库靠民心疆域征税、养兵养官需开支；逢科举纳贤才、行和亲结盟好。</p>
   <p>国库枯竭、民心尽失、兵败国破、权臣篡位或绝嗣，皆会<b>亡国</b>。在位长久、国力均衡、威望卓著的明君，方能青史留名为<b>千古一帝</b>。</p>`);
 }
 
@@ -508,16 +508,16 @@ function openGameMenu(){
   const mOn=(typeof MusicSys!=="undefined")&&MusicSys.isEnabled();
   const sOn=(typeof SFX!=="undefined")&&!SFX.isMuted();
   openModal(`<h2>菜单</h2><div class="menu-list">
-    <button class="btn btn-primary" onclick="UI.openArchive('save')">💾 存档 / 读档</button>
-    <button class="btn" onclick="UI.toggleMusic(this)">🎵 背景音乐：${mOn?"开":"关"}</button>
-    <button class="btn" onclick="UI.toggleSfx(this)">🔔 音效：${sOn?"开":"关"}</button>
-    <button class="btn" onclick="UI.openHelp()">📜 玩法说明</button>
-    <button class="btn" onclick="UI.backToTitle()">🏛 返回标题</button>
+    <button class="btn btn-primary" onclick="UI.openArchive('save')">存档 / 读档</button>
+    <button class="btn" onclick="UI.toggleMusic(this)">背景音乐：${mOn?"开":"关"}</button>
+    <button class="btn" onclick="UI.toggleSfx(this)">音效：${sOn?"开":"关"}</button>
+    <button class="btn" onclick="UI.openHelp()">玩法说明</button>
+    <button class="btn" onclick="UI.backToTitle()">返回标题</button>
     <button class="btn ghost" onclick="UI.closeModal()">✖ 继续游戏</button>
   </div><p class="panel-tip">※ 背景音乐为实时合成古风（五声音阶古筝），随昼夜战事变换。进度已自动保存。</p>`);
 }
-function toggleMusic(btn){ if(typeof MusicSys==="undefined") return; const on=MusicSys.toggle(); if(btn) btn.textContent=`🎵 背景音乐：${on?"开":"关"}`; }
-function toggleSfx(btn){ if(typeof SFX==="undefined") return; const on=SFX.isMuted(); SFX.setMuted(!on); if(btn) btn.textContent=`🔔 音效：${!on?"关":"开"}`; }
+function toggleMusic(btn){ if(typeof MusicSys==="undefined") return; const on=MusicSys.toggle(); if(btn) btn.textContent=`背景音乐：${on?"开":"关"}`; }
+function toggleSfx(btn){ if(typeof SFX==="undefined") return; const on=SFX.isMuted(); SFX.setMuted(!on); if(btn) btn.textContent=`音效：${!on?"关":"开"}`; }
 function backToTitle(){ closeModal(); show("title"); showRecord(); if(typeof MusicSys!=="undefined") MusicSys.setScene("title"); }
 
 /* ---------- 开场预加载：把所有立绘一次性载入浏览器缓存，进局后立绘即开即显 ---------- */

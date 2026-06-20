@@ -130,7 +130,7 @@ function check(s){
   ACHIEVEMENTS.forEach(a=>{
     if(!got.includes(a.id) && a.cond(s)){
       got.push(a.id); changed=true;
-      notes.push(`🏆 成就解锁·${a.name}${a.title?("（得称号「"+a.title+"」）"):""}`);
+      notes.push(`成就解锁·${a.name}${a.title?("（得称号「"+a.title+"」）"):""}`);
       if(a.title && !equippedTitle()) setTitle(a.title);   // 首个称号自动佩戴
     }
   });
@@ -155,7 +155,7 @@ function renderBody(s){
     h+=`<h3 class="harem-sec">主线 · 中兴大业</h3>`;
     if(q) h+=`<div class="q-card cur"><div class="q-h"><b>${q.name}</b><span class="q-step">${s.quest.mainIdx+1}/${MAIN_QUESTS.length}</span></div>
       <div class="q-desc">${q.desc}</div><div class="q-rw">奖励：${rwText(q.reward)}</div></div>`;
-    else h+=`<p class="panel-tip">🎉 中兴大业已全数达成，你已是名垂青史的一代雄主！</p>`;
+    else h+=`<p class="panel-tip">中兴大业已全数达成，你已是名垂青史的一代雄主！</p>`;
     // 已完成主线（折叠简列）
     if(s.quest.mainIdx>0){ h+=`<div class="q-done-list">已成：`+MAIN_QUESTS.slice(0,s.quest.mainIdx).map(m=>`<span>✓${m.name}</span>`).join(" ")+`</div>`; }
     h+=`<h3 class="harem-sec">日课 · 每月轮替</h3>`;
@@ -168,7 +168,7 @@ function renderBody(s){
     const got=unlockedAch();
     h+=`<h3 class="harem-sec">成就（${got.length}/${ACHIEVEMENTS.length}）</h3>`;
     h+=ACHIEVEMENTS.map(a=>{const on=got.includes(a.id);
-      return `<div class="q-card ${on?"":"locked"}"><div class="q-h"><b>${on?"🏆 "+a.name:"🔒 ???"}</b>${a.title?`<span class="q-title">称号·${a.title}</span>`:""}</div>
+      return `<div class="q-card ${on?"":"locked"}"><div class="q-h"><b>${on?a.name:"未解之业 ???"}</b>${a.title?`<span class="q-title">称号·${a.title}</span>`:""}</div>
         <div class="q-desc">${on?a.desc:"（未解锁）"}</div></div>`;
     }).join("");
   }

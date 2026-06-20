@@ -8,13 +8,13 @@
 
 /* 关系类型：显示用（图标 + 色 + 联动倾向，机制联动在后续阶段接入） */
 const RELTYPE = {
-  亲族:{ico:"🩸",cls:"r-kin",  desc:"血亲连心"},
-  师徒:{ico:"📜",cls:"r-mentor",desc:"师门情谊"},
-  姻亲:{ico:"💍",cls:"r-marry",desc:"姻娅之好"},
-  盟友:{ico:"🤝",cls:"r-ally", desc:"声气相通"},
-  同党:{ico:"🕯",cls:"r-cabal",desc:"朋比为奸"},
-  政敌:{ico:"⚔",cls:"r-rival",desc:"庙堂相争"},
-  世仇:{ico:"🔥",cls:"r-feud", desc:"势不两立"}
+  亲族:{ico:"亲",cls:"r-kin",  desc:"血亲连心"},
+  师徒:{ico:"师",cls:"r-mentor",desc:"师门情谊"},
+  姻亲:{ico:"姻",cls:"r-marry",desc:"姻娅之好"},
+  盟友:{ico:"盟",cls:"r-ally", desc:"声气相通"},
+  同党:{ico:"党",cls:"r-cabal",desc:"朋比为奸"},
+  政敌:{ico:"敌",cls:"r-rival",desc:"庙堂相争"},
+  世仇:{ico:"仇",cls:"r-feud", desc:"势不两立"}
 };
 
 /* 固定名册。base 数值落在 TIER_STATS 区间内（恒定，不随机）。

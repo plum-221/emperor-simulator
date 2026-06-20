@@ -11,8 +11,8 @@ const COLS=7, ROWS=5, MAX_TURN=14;
 /* 地形：move=进入耗费(99=不可进)，def=守方减伤 */
 const TERRAIN={
   plain:{key:"plain",name:"平原",move:1,def:0,   ico:""},
-  hill: {key:"hill", name:"山丘",move:2,def:0.25,ico:"⛰"},
-  wood: {key:"wood", name:"密林",move:2,def:0.15,ico:"🌲"},
+  hill: {key:"hill", name:"山丘",move:2,def:0.25,ico:"丘"},
+  wood: {key:"wood", name:"密林",move:2,def:0.15,ico:"林"},
   water:{key:"water",name:"河流",move:99,def:0,  ico:"〜"}
 };
 let B=null;
@@ -45,7 +45,7 @@ function buildUnits(cfg){
   // 主将（武将）
   let leaderId=null, bestMil=-1;
   gens.forEach(g=>{
-    const u=mkUnit({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"⚔",
+    const u=mkUnit({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"将",
       maxhp:Math.round(58+g.mil*0.6+mil*0.2), atk:Math.round(11+g.mil*0.5+mil*0.1), rng:1, move:3});
     if(g.mil>bestMil){ bestMil=g.mil; leaderId=u.id; }
     us.push(u);
@@ -53,7 +53,7 @@ function buildUnits(cfg){
   // 御驾亲征：陛下作为强力单位
   if(cfg.emperor && cfg.withEmperor){
     const e=cfg.emperor;
-    us.push(mkUnit({id:"u"+(n++),side:"our",name:e.name+"(亲征)",kind:"帝",icon:"♛",isEmperor:true,
+    us.push(mkUnit({id:"u"+(n++),side:"our",name:e.name+"(亲征)",kind:"帝",icon:"君",isEmperor:true,
       maxhp:Math.round(70+e.martial*0.7+mil*0.2), atk:Math.round(14+e.martial*0.6+mil*0.1), rng:1, move:3}));
   }
   // 禁军步卒（由国家兵力派生，凑足阵容）
@@ -61,16 +61,16 @@ function buildUnits(cfg){
   for(let k=0;k<footN;k++) us.push(mkUnit({id:"u"+(n++),side:"our",name:"禁军"+(k+1),kind:"卒",icon:"丨",
     maxhp:Math.round(42+mil*0.4), atk:Math.round(8+mil*0.22), rng:1, move:3}));
   // 弓手（射程2）
-  us.push(mkUnit({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"🏹",
+  us.push(mkUnit({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"弓",
     maxhp:Math.round(34+mil*0.25), atk:Math.round(10+mil*0.2), rng:2, move:2}));
-  if(leaderId){ const L=us.find(u=>u.id===leaderId); if(L){ L.isLeader=true; L.icon="♚"; } }
+  if(leaderId){ const L=us.find(u=>u.id===leaderId); if(L){ L.isLeader=true; L.icon="帅"; } }
 
   // 敌军
   const ep=cfg.enemyPow||55, foeN=Math.max(3,Math.min(5,3+Math.floor(ep/28)));
   for(let k=0;k<foeN;k++){
     const lead=k===0;
     us.push(mkUnit({id:"f"+(n++),side:"foe",name:lead?(cfg.enemy+"·王"):(cfg.enemy+"兵"+k),
-      kind:lead?"酋":"番",icon:lead?"☠":"敌",isLeader:lead,
+      kind:lead?"酋":"番",icon:lead?"酋":"敌",isLeader:lead,
       maxhp:Math.round((lead?70:46)+ep*0.5*rnd(0.85,1.1)),
       atk:Math.round((lead?14:9)+ep*0.18*rnd(0.85,1.1)), rng:(k===foeN-1?2:1), move:3}));
   }
@@ -203,7 +203,7 @@ function endByAttrition(){
 }
 function finish(win){
   B.phase="over"; B.win=win;
-  B.log.unshift(win?"🏆 敌军溃灭，大获全胜！":"⚑ 王师力竭，败退而还……");
+  B.log.unshift(win?"敌军溃灭，大获全胜！":"王师力竭，败退而还……");
   const mc=document.getElementById("modal-close"); if(mc) mc.style.display="";
   const ourMax=B.units.filter(u=>u.side==="our").reduce((a,u)=>a+u.maxhp,0)||1;
   const ourHpNow=aliveOf("our").reduce((a,u)=>a+u.hp,0);
@@ -254,9 +254,9 @@ function render(){
   let ctrl="";
   if(B.phase==="deploy"){
     ctrl=`<div class="wf-tip">布阵：点己方单位再点左侧阵地格可换位（仅左二列）。摆好后开战。</div>
-      <button class="btn btn-primary wf-go" id="wf-start">⚔ 开 战</button>`;
+      <button class="btn btn-primary wf-go" id="wf-start">开 战</button>`;
   }else if(B.phase==="over"){
-    ctrl=`<div class="wf-result ${B.win?"win":"lose"}">${B.win?"⚑ 凯　旋":"✖ 败　北"}</div>
+    ctrl=`<div class="wf-result ${B.win?"win":"lose"}">${B.win?"凯　旋":"败　北"}</div>
       <button class="btn btn-primary wf-go" id="wf-finish">${B.win?"献　捷　班　师":"收　拾　残　部"}</button>`;
   }else{
     const sel=selU?`已选 <b>${selU.icon}${selU.name}</b>（${B.moved?"已移动·":""}点红格攻击／点空格移动）`:"点己方单位行动";
@@ -266,7 +266,7 @@ function render(){
   }
   const log=B.log.slice(0,5).map((l,i)=>`<div class="wf-log-item${i===0?" fresh":""}">${l}</div>`).join("");
   const html=`<div class="warfield">
-    <h2 class="wf-h">⚔ 沙　盘　会　战 <span class="wf-vs">王师 ${aliveOf("our").length} · ${B.enemy} ${aliveOf("foe").length}</span></h2>
+    <h2 class="wf-h">沙　盘　会　战 <span class="wf-vs">王师 ${aliveOf("our").length} · ${B.enemy} ${aliveOf("foe").length}</span></h2>
     <div class="wf-grid" style="grid-template-columns:repeat(${COLS},1fr)">${cells}</div>
     <div class="wf-ctrl">${ctrl}</div>
     <div class="wf-log">${log}</div>

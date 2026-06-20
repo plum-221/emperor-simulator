@@ -136,10 +136,10 @@ function panelHTML(s){
   const lv=s.spy.level||1, eff=effLevel(s), acc=Math.round(accuracyOf(eff)*100), cap=agentsOf(lv);
   const boss=spymasterBonus(s);
   let h=`<div class="spy">
-    <h2 class="spy-h">⟁ 密 谍 司</h2>`;
+    <h2 class="spy-h">密 谍 司</h2>`;
   if(!established(s)){
     h+=`<p class="spy-tip">设立密谍司，置耳目于朝野，密察百官私行。每夜密报，真伪立判。</p>
-      <button class="btn btn-primary spy-go" onclick="Game.spyEstablish()">⟁ 设立密谍司（耗国库 15）</button>
+      <button class="btn btn-primary spy-go" onclick="Game.spyEstablish()">设立密谍司（耗国库 15）</button>
       <p class="spy-tip dim">※ 若密谍提督（乐祈）在朝执掌，侦查更精。</p></div>`;
     return h;
   }
@@ -183,13 +183,13 @@ function spyOpsHTML(m,I){
 /* ---------- 密报弹窗 HTML ---------- */
 function reportHTML(rec){
   let h=`<div class="spyreport ${rec.alert?'alert':''}">
-    <div class="spr-seal">⟁</div>
+    <div class="spr-seal">谍</div>
     <h2 class="spr-h">密 谍 司 · 夜 报</h2>
     <div class="spr-sub">${rec.day} 戌时密呈 · 侦准 ${rec.acc}%</div>`;
   if(!rec.items.length){
     h+=`<p class="spr-quiet">是夜朝野安靖，未见异动。</p>`;
   }else{
-    if(rec.alert) h+=`<div class="spr-alert">⚠ 有大患将成，伏望圣裁！</div>`;
+    if(rec.alert) h+=`<div class="spr-alert">有大患将成，伏望圣裁！</div>`;
     h+=`<div class="spr-items">`+rec.items.map(it=>`<div class="spr-item">
       <div class="spr-who">${it.title?`<span class="spr-t">${it.title}</span>`:""}<b>${it.name}</b>
         <span class="spr-loy">真忠 ${it.trueLoyalty}${it.mask}</span></div>

@@ -789,7 +789,7 @@ const api = {
       if(s.nation.month!==startM || s.nation.year!==startY) break;  // 跨月即停
     }
     this._ff=false;
-    if(!s.over){ this.renderTurn(); if(!s.pendingEvent) this.toast("⏩ 已快进至月末（或下一桩朝政）"); }
+    if(!s.over){ this.renderTurn(); if(!s.pendingEvent) this.toast("已快进至月末（或下一桩朝政）"); }
   },
 
   /* ---------- 推进一个时段（早→中→晚→次日）---------- */
