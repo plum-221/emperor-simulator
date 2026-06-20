@@ -655,19 +655,27 @@ function collectAssetUrls(){
 function preloadAssets(done){
   const urls=collectAssetUrls(), total=urls.length;
   const fill=$("pl-fill"), txt=$("pl-text"), pl=$("preloader");
-  let loaded=0, finished=false;
-  const finish=()=>{ if(finished) return; finished=true;
+  let loaded=0, ready=false, entered=false;
+  // 入境：玩家轻触一下 → 起播标题曲(满足浏览器自动播放限制) → 揭开标题
+  const enter=()=>{ if(entered) return; entered=true;
+    if(typeof MusicSys!=="undefined") MusicSys.start();   // 这一触既起播、又让 title 曲在标题页响起
     if(pl){ pl.classList.add("done"); setTimeout(()=>{ pl.style.display="none"; },520); }
     done&&done(); };
-  if(!total){ finish(); return; }
+  // 资源就绪 → 提示「轻触入境」，等玩家点（不再自动淡出，确保标题曲能响）
+  const arm=()=>{ if(ready) return; ready=true;
+    if(txt) txt.textContent="轻 触 入 境";
+    if(pl){ pl.classList.add("ready"); pl.addEventListener("pointerdown",enter,{once:true}); }
+    else enter();
+  };
+  if(!total){ arm(); return; }
   const tick=()=>{ loaded++;
     const pct=Math.round(loaded/total*100);
     if(fill) fill.style.width=pct+"%";
-    if(txt)  txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
-    if(loaded>=total) finish();
+    if(txt && !ready)  txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
+    if(loaded>=total) arm();
   };
   urls.forEach(u=>{ const im=new Image(); im.onload=im.onerror=tick; im.src=u; });
-  setTimeout(()=>{ if(!finished){ if(txt) txt.textContent="仪仗就绪，恭请登基"; finish(); } }, 20000); // 兜底：个别图卡住也放行
+  setTimeout(()=>{ arm(); }, 20000); // 兜底：个别图卡住也放行（仍等轻触入境）
 }
 function boot(){
   try{ if(localStorage.getItem("zjjs_cheat")==="1") Game._cheat=true; }catch(e){}   // 破解版一经解锁，本机长期有效

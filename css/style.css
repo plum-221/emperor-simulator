@@ -716,6 +716,9 @@ b{color:var(--gold-br);font-weight:600;}
 .pl-bar>i{display:block;height:100%;width:0;border-radius:6px;transition:width .25s ease;
   background:linear-gradient(90deg,#9a7327,#e7c466,#f3d98a);box-shadow:0 0 10px rgba(231,196,102,.6);}
 .pl-text{margin:4px 0 0;font-size:13px;color:#c8a866;letter-spacing:.05em;font-variant-numeric:tabular-nums;}
+#preloader.ready{cursor:pointer;}
+#preloader.ready .pl-text{font-size:18px;color:var(--gold-br);letter-spacing:.5em;animation:plPulse 1.5s ease-in-out infinite;}
+@keyframes plPulse{0%,100%{opacity:.45;}50%{opacity:1;}}
 @keyframes plPulse{0%,100%{box-shadow:0 0 22px rgba(217,182,95,.28)}50%{box-shadow:0 0 36px rgba(217,182,95,.5)}}
 
 /* ============ 立绘加载：骨架屏微光 + 加载完淡入 ============ */
