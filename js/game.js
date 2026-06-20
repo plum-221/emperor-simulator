@@ -68,8 +68,7 @@ const api = {
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
-    // 默认任命
-    this.autoAppoint();
+    // 官职即身份：固定班底登朝自动就位（makeFromCast 已置 post），无需玩家指派
     MapSys.initState(this.s);
     if(typeof QuestSys!=="undefined") QuestSys.initState(this.s);
     this.logMsg(`${this.s.dynasty}立国，${this.s.reign}帝即位，时年${this.s.emperor.age}岁。`);
@@ -707,12 +706,9 @@ const api = {
     // 百官治绩
     s.ministers.forEach(m=>{
       if(!m.post) return;
-      const pos=POSITIONS.find(p=>p.id===m.post); const t=m[pos.use];
-      if(m.post==="chancellor"){ gain("treasury",t/15); gain("people",t/32); }
-      if(m.post==="finance"){ gain("treasury",t/11); gain("food",t/28); }
-      if(m.post==="censor"){ gain("people",t/40); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-1)); }
-      if(m.post==="marshal"){ gain("military",t/18); }
-      if(m.post==="defense"){ gain("military",t/22); }
+      const pos=POSITIONS.find(p=>p.id===m.post); if(!pos) return;
+      const t=m[pos.use];
+      if(pos.eff) pos.eff(gain, t, s, n);       // 数据驱动：各官职月结治绩
       this.gainExp(m, 3);                       // 在职历练：积累经验升级
     });
     // 经济：税入 - 开支（开支随军队/后宫/百官增长 → 治国是收支平衡的艺术）

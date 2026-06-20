@@ -130,6 +130,14 @@ const ROSTER = [
     rel:[] }
 ];
 
+/* 人物 → 固有官职（官职即身份，一人一职·登朝自动就位） */
+const POST_OF = {
+  c_chancellor:"chancellor", c_finance:"finance", c_censor:"censor", c_scholar:"academy",
+  c_personnel:"personnel", c_spymaster:"spymaster", c_kin:"steward", c_remonstrant:"remonstrant",
+  m_marshal:"marshal", m_piaoqi:"piaoqi", m_zhenbei:"defense", m_vanguard:"vanguard",
+  m_huben:"huben", m_guard:"guard", m_navy:"navy", m_jinguo:"valkyrie"
+};
+
 const _castIndex = {}; ROSTER.forEach(c=>_castIndex[c.id]=c);
 function castById(id){ return _castIndex[id]||null; }
 function castName(id){ const c=_castIndex[id]; return c?c.name:"（未知）"; }
@@ -140,7 +148,7 @@ function makeFromCast(c){
   return {
     id:c.id, castId:c.id, name:c.name, title:c.title||"", portrait:c.portrait,
     civ:c.base.civ, mil:c.base.mil, loyalty:c.base.loyalty, ambition:c.base.ambition,
-    personality:c.personality, post:null, age:c.base.age, reward:0,
+    personality:c.personality, post:POST_OF[c.id]||null, age:c.base.age, reward:0,   // 登朝即就其固有官职
     tier:c.tier, kind:c.kind, weapon:null, level:1, exp:0,
     story:c.story, rel:c.rel||[]
   };

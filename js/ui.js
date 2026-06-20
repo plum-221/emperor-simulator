@@ -228,13 +228,8 @@ function renderPanel(name){
       const bkBtn=selecting?"":`<button class="chip ${canBk&&(s.shards||0)>=8?"gold":""}" ${canBk?"":"disabled"} onclick="Game.breakthrough('${m.id}')" title="Lv5且非满星可突破·耗碎片8">突破 ⤴${canBk?" ✦8":""}</button>`;
       const wpSel=(!selecting&&owned.length)?`<select class="wp-sel" onchange="Game.equipWeapon('${m.id}',this.value)">
         <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus+((s.weaponLv&&s.weaponLv[w.id])||0)*FORGE_STEP}</option>`).join("")+`</select>`:"";
-      // 官职按类别限定：文职(use=civ)只给文官、武职(use=mil)只给武将——杜绝「谁都能当」
-      const okPosts=POSITIONS.filter(p=> m.kind==="martial" ? p.use==="mil" : p.use==="civ");
+      // 官职即身份：登朝自动就位、不可指派；此处仅余「养成/赏罚」类操作
       const postBtns=selecting?"":`<div class="post-row">`+
-        okPosts.map(p=>{ const holder=s.ministers.find(x=>x.post===p.id);
-          const taken = holder && holder.id!==m.id;
-          return `<button class="chip ${m.post===p.id?"on":""}" onclick="Game.appoint('${m.id}','${m.post===p.id?"":p.id}')" title="${p.desc}${taken?`　【现任：${holder.name}，改任将取代之】`:"　（虚位以待）"}">${p.name}${taken?"·满":""}</button>`;
-        }).join("")+
         `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+bkBtn+wpSel+
         `<button class="chip warn" onclick="Game.dismissMinister('${m.id}')">罢免</button>`+
         `<button class="chip danger" onclick="Game.executeMinister('${m.id}')">处死</button></div>`;

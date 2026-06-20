@@ -56,12 +56,44 @@ const ICONS = {
 };
 
 /* 官职：用哪种才（civ文/mil武）、主要增益维度 */
+/* 官制：一人一职，官职即人物固有身份（登朝自动就位，玩家不再随意指派）。
+   eff(gain,t,s,n) 为月结治绩贡献（t=该官按 use 取的 civ/mil 值）；数据驱动，便于扩充。
+   核心要职（丞相/度支/御史/大将军）效益最大，其余各有所司、效益渐次。 */
 const POSITIONS = [
-  {id:"chancellor",name:"丞相",   use:"civ",desc:"总领百官，理政安民（增国库·民心）"},
-  {id:"censor",    name:"御史大夫",use:"civ",desc:"监察百官，肃贪反腐（抑野心·增民心）"},
-  {id:"finance",   name:"户部尚书",use:"civ",desc:"掌天下钱粮（增国库·粮草）"},
-  {id:"marshal",   name:"大将军",  use:"mil",desc:"统率三军，征战四方（增兵力·战力）"},
-  {id:"defense",   name:"兵部尚书",use:"mil",desc:"操练兵马，整军经武（增兵力）"}
+  // —— 文职（use:civ）——
+  {id:"chancellor", name:"丞相",    use:"civ",desc:"总领百官，理政安民",
+    eff:(g,t,s,n)=>{ g("treasury",t/15); g("people",t/32); }},
+  {id:"finance",    name:"度支尚书",use:"civ",desc:"掌天下钱粮",
+    eff:(g,t,s,n)=>{ g("treasury",t/11); g("food",t/28); }},
+  {id:"censor",     name:"御史大夫",use:"civ",desc:"监察百官，肃贪反腐",
+    eff:(g,t,s,n)=>{ g("people",t/40); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-1)); }},
+  {id:"academy",    name:"翰林学士",use:"civ",desc:"文教化民，掌制诰修史",
+    eff:(g,t,s,n)=>{ g("people",t/48); g("prestige",t/60); }},
+  {id:"personnel",  name:"吏部侍郎",use:"civ",desc:"铨选人事，得人则朝安",
+    eff:(g,t,s,n)=>{ s.ministers.forEach(x=>x.loyalty=R.clamp(x.loyalty+0.3)); }},
+  {id:"spymaster",  name:"密谍提督",use:"civ",desc:"耳目遍朝野，监察不轨",
+    eff:(g,t,s,n)=>{ s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-0.6)); }},
+  {id:"steward",    name:"光禄勋",  use:"civ",desc:"掌宫廷供奉膳赐",
+    eff:(g,t,s,n)=>{ g("treasury",t/40); }},
+  {id:"remonstrant",name:"谏议大夫",use:"civ",desc:"犯颜直谏，匡正得失",
+    eff:(g,t,s,n)=>{ g("prestige",t/45); g("people",t/55); }},
+  // —— 武职（use:mil）——
+  {id:"marshal",    name:"大将军",  use:"mil",desc:"统率三军，征战四方",
+    eff:(g,t,s,n)=>{ g("military",t/18); }},
+  {id:"piaoqi",     name:"骠骑将军",use:"mil",desc:"忠勇宿将，威震四方",
+    eff:(g,t,s,n)=>{ g("military",t/26); g("prestige",t/60); }},
+  {id:"defense",    name:"镇北将军",use:"mil",desc:"镇守边疆，整军经武",
+    eff:(g,t,s,n)=>{ g("military",t/24); }},
+  {id:"vanguard",   name:"先锋校尉",use:"mil",desc:"临阵先登，骁勇无前",
+    eff:(g,t,s,n)=>{ g("military",t/40); }},
+  {id:"huben",      name:"虎贲中郎将",use:"mil",desc:"统宿卫精兵",
+    eff:(g,t,s,n)=>{ g("military",t/32); }},
+  {id:"guard",      name:"羽林中郎将",use:"mil",desc:"掌宫禁宿卫，防患未然",
+    eff:(g,t,s,n)=>{ g("prestige",t/70); s.ministers.forEach(x=>x.ambition=R.clamp(x.ambition-0.5)); }},
+  {id:"navy",       name:"水师都督",use:"mil",desc:"江海漕运，舳舻千里",
+    eff:(g,t,s,n)=>{ g("treasury",t/45); g("military",t/55); }},
+  {id:"valkyrie",   name:"巾帼将军",use:"mil",desc:"女中豪杰，替父执戟",
+    eff:(g,t,s,n)=>{ g("military",t/28); }}
 ];
 
 /* 性格：影响忠诚漂移与野心 */
