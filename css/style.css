@@ -581,6 +581,9 @@ b{color:var(--gold-br);font-weight:600;}
 .imp-note{font-size:11px;color:#9a8a6a;margin-top:8px;text-align:center;}
 
 /* ============ 密谍司 ============ */
+/* 密谍司面板较长——隐藏滚动条（仍可滚） */
+.modal-box:has(.spy){scrollbar-width:none;-ms-overflow-style:none;}
+.modal-box:has(.spy)::-webkit-scrollbar{display:none;}
 .spy-bar.alert{border-color:var(--red)!important;box-shadow:0 0 0 1px var(--red),0 0 12px rgba(179,38,30,.4);}
 .spy{color:var(--ink);}
 .spy-h{text-align:center;color:#3a2a4a;font-size:20px;letter-spacing:.2em;margin:0 0 8px;}
