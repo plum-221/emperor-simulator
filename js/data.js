@@ -312,7 +312,7 @@ const _PC = "assets/portraits/consorts/";   // 立绘目录
    traitKey 为内部 effect 键（applyConsortTraits 据此结算），保持不动；
    姓名 / 特质名 / 解锁文案 / 三幕剧情皆为本游戏原创。立绘沿用 manifest 图。 */
 const CONSORTS = [
- {id:"hongfu", name:"苏蘅", portrait:_PC+"c_011.jpg", origin:"maid", woo:"charm", beauty:84, joinRank:0,
+ {id:"hongfu", name:"苏蘅", portrait:_PC+"hongfu_neutral.jpg", origin:"maid", woo:"charm", beauty:84, joinRank:0,
   traitKey:"huiyan", trait:{name:"慧眼识珠",desc:"独具识人之明，每月为君添招贤点 +1。"},
   unlock:{desc:"开局即可结识（掌名册的掖庭女史，过目成诵）", cond:()=>true},
   scenes:[
@@ -349,7 +349,7 @@ const CONSORTS = [
      {who:"苏蘅", face:"bow", txt:"愿为陛下识尽天下英才，亦愿长伴君侧——不负这一段知遇之恩。"}],
     choices:[{text:"纳为答应，引为知己",eff:{}}]}]},
 
- {id:"luofu", name:"阮陌桑", portrait:_PC+"c_018.jpg", origin:"common", woo:"int", beauty:82, joinRank:1,
+ {id:"luofu", name:"阮陌桑", portrait:_PC+"luofu_neutral.jpg", origin:"common", woo:"int", beauty:82, joinRank:1,
   traitKey:"mulberry", trait:{name:"陌上遗芳",desc:"贤淑动乡里，在宫则民心月增 +1。"},
   unlock:{desc:"国祚≥1年（微服城南，桑陌间偶遇贤名远播的农家女）", cond:s=>s.nation.year>=1},
   scenes:[
@@ -379,29 +379,70 @@ const CONSORTS = [
      {who:"阮陌桑", face:"blush", txt:"往后，这江山是你的田。你种，我陪你看它长。"}],
     choices:[{text:"以礼纳为常在",eff:{people:+2}}]}]},
 
- {id:"xishi", name:"沄溪", portrait:_PC+"c_010.jpg", origin:"maid", woo:"charm", beauty:97, joinRank:1,
+ {id:"xishi", name:"沄溪", portrait:_PC+"xishi_neutral.jpg", origin:"maid", woo:"charm", beauty:97, joinRank:1,
   traitKey:"chenyu", trait:{name:"照水之容",desc:"绝世之容润泽圣心，帝王魅力缓涨。"},
   unlock:{desc:"威望≥50（番邦慕威，进献一名临水照影的绝色女子）", cond:s=>s.nation.prestige>=50},
   scenes:[
    {at:25,title:"临水照影",text:"邻邦慕你威名，进献绝色女子沄溪。初见之日，她临溪照影，水波为之凝滞，游鱼忘游——左右皆失色。",
+    script:[
+     {cg:"1", txt:"邻邦慕你威名，遣使进献一名绝色女子，名唤沄溪。"},
+     {txt:"初见之日，她临溪照影，水波为之凝滞，游鱼忘游——左右无不失色。"},
+     {who:"你", txt:"（朕阅人无数，竟从未见过这般颜色……）"},
+     {who:"沄溪", face:"neutral", txt:"陛下这般看着妾，是在看妾，还是在看水里的影子？"},
+     {who:"你", txt:"有何分别？"},
+     {who:"沄溪", face:"smile", txt:"影子会散，人心不散。陛下若只爱这一池影，不如去爱江山。"}],
     choices:[{text:"惊为天人，筑临水之榭",eff:{charm:+1}},{text:"恐为红颜祸水，自戒",eff:{politics:+1}}]},
    {at:55,title:"溪畔劝言",text:"你日日与沄溪相对水榭，乐而忘返。她却敛容相劝：「容色如溪水东流，社稷方是长久。」绝色而有识见。",
+    script:[
+     {cg:"2", txt:"水榭之中，你与沄溪相对忘返，已数日未理朝政。"},
+     {who:"沄溪", face:"pensive", txt:"陛下，奏章都积了三尺高了。"},
+     {who:"你", txt:"难得偷得浮生半日闲，奏章明日再看不迟。"},
+     {who:"沄溪", face:"pensive", txt:"容色如这溪水，终要东流；社稷江山，方是长久。妾不愿做那祸水。"},
+     {who:"你", txt:"（绝色而有此识见……朕错看她了。）"},
+     {who:"沄溪", face:"neutral", txt:"妾陪陛下看一炷香的水，陛下便去看一日的奏章，可好？"}],
     choices:[{text:"纳其谏，宠而不废政",eff:{politics:+1}},{text:"携之泛舟，暂忘忧烦",eff:{health:+1}}]},
    {at:85,title:"溪心定情",text:"沄溪虽出寒微，心如溪水澄澈。今夜她临水抚琴一曲，曲终敛衽：愿照你一世清明，不教这江山蒙尘……",join:true,
+    script:[
+     {cg:"3", txt:"夜，溪心月白。沄溪临水抚琴一曲，曲终敛衽。"},
+     {who:"沄溪", face:"neutral", txt:"妾出身寒微，又是异邦进献之身，本不敢有非分之想。"},
+     {who:"沄溪", face:"smile", txt:"可妾这颗心，像这溪水一样，澄澈见底，藏不住事。"},
+     {who:"你", txt:"那你这心里，照见了什么？"},
+     {who:"沄溪", face:"blush", txt:"照见一位……肯听妾说真话的君王。"},
+     {who:"沄溪", face:"bow", txt:"愿照陛下一世清明，不教这江山，蒙了尘。"}],
     choices:[{text:"纳为常在，相期相守",eff:{}}]}]},
 
- {id:"wenjun", name:"林夙", portrait:_PC+"c_012.jpg", origin:"common", woo:"int", beauty:85, joinRank:3,
+ {id:"wenjun", name:"林夙", portrait:_PC+"wenjun_neutral.jpg", origin:"common", woo:"int", beauty:85, joinRank:3,
   traitKey:"fengqiu", trait:{name:"当垆理财",desc:"才女主中馈，理财有方，国库月入 +1。"},
   unlock:{desc:"帝王智力≥55（能赏其才，方得这位精擅钱谷的才女青眼）", cond:s=>s.emperor.int>=55},
   scenes:[
    {at:25,title:"琴台遇才",text:"富商之女林夙新寡，慕才而至。席间论及钱谷盐铁之道，她对答如流、算无遗策，满座须眉为之噤声。",
+    script:[
+     {cg:"1", txt:"席间论及钱谷盐铁之道，一名新寡的富商之女林夙，对答如流、算无遗策。"},
+     {txt:"满座须眉，竟被她问得哑口无言。"},
+     {who:"你", txt:"妇人也懂盐铁？"},
+     {who:"林夙", face:"neutral", txt:"钱谷不分男女，只分会算与不会算。陛下若不信，尽可考妾。"},
+     {who:"你", txt:"好。若国库空虚而边关告急，当如何？"},
+     {who:"林夙", face:"smile", txt:"开源、节流、缓征、互市，四策并行。陛下要听细的，妾能说上一个时辰。"}],
     choices:[{text:"以琴心相挑",eff:{int:+1}},{text:"出一道难题考之",eff:{int:+1}}]},
    {at:55,title:"当垆同甘",text:"林夙不顾父阻、连夜相奔，甚而当垆理账、亲操井臼，不以贫贱为耻——此女有同甘共苦之志。",
+    script:[
+     {cg:"2", txt:"林夙不顾父亲阻拦，连夜相奔。你寻去时，她竟亲自当垆理账、操持井臼。"},
+     {who:"你", txt:"你本是富贵小姐，何苦如此？"},
+     {who:"林夙", face:"neutral", txt:"妾要的从不是富贵。会算账的手，洗碗也不脏。"},
+     {who:"林夙", face:"smile", txt:"妾认准的人，便是再清贫，也甘之如饴。"},
+     {who:"你", txt:"（这般决绝……世间几人能及。）"}],
     choices:[{text:"敬其决绝，许以白首",eff:{}},{text:"赐金以全其家",eff:{treasury:-4}}]},
    {at:85,title:"白首之约",text:"林夙以一纸理财长策相示，愿为你掌内帑、丰府库；又附短笺：「愿得一心人，白头不相离。」是要你许她一世专情……",join:true,
+    script:[
+     {cg:"3", txt:"林夙将一卷理财长策双手奉上，策末附着一张短笺。"},
+     {who:"你", txt:"（『愿得一心人，白头不相离』……）"},
+     {who:"林夙", face:"pensive", txt:"妾能为陛下掌内帑、丰府库，让这江山不为钱粮所困。"},
+     {who:"林夙", face:"blush", txt:"妾只求陛下一句话——这一生，一心一意。"},
+     {who:"你", txt:"朕以江山为聘，许你一世不负。"},
+     {who:"林夙", face:"smile", txt:"那这笔账，妾便认下了。"}],
     choices:[{text:"纳为嫔，誓不相负",eff:{}}]}]},
 
- {id:"hongxian", name:"慕容璇", portrait:_PC+"c_002.jpg", origin:"maid", woo:"martial", beauty:80, joinRank:2,
+ {id:"hongxian", name:"慕容璇", portrait:_PC+"hongxian_neutral.jpg", origin:"maid", woo:"martial", beauty:80, joinRank:2,
   traitKey:"hongxian", trait:{name:"夜阑潜锋",desc:"夜行女侠慑奸佞，百官野心月降、谋反难起。"},
   unlock:{desc:"大将军在任（军中举荐一名身负绝艺的青衣婢潜身入宫）", cond:s=>s.ministers.some(m=>m.post==="marshal")},
   scenes:[
@@ -435,53 +476,122 @@ const CONSORTS = [
      {who:"慕容璇", face:"bow", txt:"愿为陛下，守这万里河山——也守你。"}],
     choices:[{text:"纳为贵人，倚为干城",eff:{}}]}]},
 
- {id:"liju", name:"温宛", portrait:_PC+"c_005.jpg", origin:"common", woo:"charm", beauty:83, joinRank:2,
+ {id:"liju", name:"温宛", portrait:_PC+"liju_neutral.jpg", origin:"common", woo:"charm", beauty:83, joinRank:2,
   traitKey:"jieyu", trait:{name:"解语花",desc:"善解人意，六宫情绪月稳 +1。"},
   unlock:{desc:"国库≥50（盛世采选良家，温宛以贤名入选）", cond:s=>s.nation.treasury>=50},
   scenes:[
    {at:25,title:"丽人入选",text:"采选良家，有女温宛者，姿容婉丽、应对从容，不矜不伐，独得众女中一份难得的娴雅。",
+    script:[
+     {cg:"1", txt:"采选良家女子。众女之中，有一人姿容婉丽、应对从容，不矜不伐。"},
+     {who:"温宛", face:"neutral", txt:"民女温宛，叩见陛下。"},
+     {who:"你", txt:"众人皆争相显露才色，你为何垂手静立？"},
+     {who:"温宛", face:"smile", txt:"花要绿叶配。满园争艳时，做一片安静的叶子，也挺好。"},
+     {who:"你", txt:"（不矜不伐，难得的娴雅。）"}],
     choices:[{text:"嘉其端庄，留备六宫",eff:{}},{text:"试其才识，问以诗书",eff:{int:+1}}]},
    {at:55,title:"解语之能",text:"宫中偶有龃龉口角，温宛总能两边宽解、化戾气为祥和，宫人皆称她一声「解语花」——六宫赖以安宁。",
+    script:[
+     {cg:"2", txt:"宫中偶有口角龃龉，温宛总能两边宽解，化戾气为祥和。宫人都唤她一声『解语花』。"},
+     {who:"温宛", face:"neutral", txt:"宫里头，针尖大的事也能闹成天大。妾不过是多说两句软话。"},
+     {who:"你", txt:"软话也是本事。六宫安宁，你功不可没。"},
+     {who:"温宛", face:"smile", txt:"陛下治天下，妾就替陛下，治好这一方小天地。"}],
     choices:[{text:"委以协理六宫之责",eff:{}},{text:"赏赐有加，以彰其德",eff:{treasury:-3}}]},
    {at:85,title:"岁岁安宁",text:"温宛无倾国之色，却有持家之能。她为你打理后宫井井有条，今夜执一盏灯，候你归来……",join:true,
+    script:[
+     {cg:"3", txt:"夜深归来，廊下一盏暖灯。温宛执灯而立，已候你多时。"},
+     {who:"温宛", face:"smile", txt:"妾无倾国之色，给不了陛下惊艳。"},
+     {who:"温宛", face:"neutral", txt:"可妾能给陛下一个井井有条的家，一盏夜夜为你亮着的灯。"},
+     {who:"你", txt:"惊艳易逝，安稳难得。这盏灯，朕要定了。"},
+     {who:"温宛", face:"blush", txt:"那妾，便为陛下守一辈子的灯。"}],
     choices:[{text:"纳为贵人，托以中馈",eff:{}}]}]},
 
- {id:"wenji", name:"谢清婳", portrait:_PC+"c_007.jpg", origin:"noble", woo:"int", beauty:86, joinRank:4,
+ {id:"wenji", name:"谢清婳", portrait:_PC+"wenji_neutral.jpg", origin:"noble", woo:"int", beauty:86, joinRank:4,
   requirePost:"chancellor",
   traitKey:"wenji", trait:{name:"兰台秘藏",desc:"博学多才，常侍御书，帝王智力缓涨、国库月入 +1。"},
   unlock:{desc:"任丞相满朝＋帝王智≥50＋国祚≥2（书香门第，父执居相位方堪匹配）",
     cond:s=>s.ministers.some(m=>m.post==="chancellor")&&s.emperor.int>=50&&s.nation.year>=2},
   scenes:[
    {at:25,title:"隔帘琴音",text:"当朝大儒之女谢清婳，博学辩才、妙于音律。隔帘抚琴，一弦忽断，她不闻而知断的是第几弦——你惊为奇才。",
+    script:[
+     {cg:"1", txt:"当朝大儒之女谢清婳，隔帘抚琴。一弦忽断，余者皆惊。"},
+     {who:"谢清婳", face:"neutral", txt:"断的是第三弦。陛下不必看，妾听得出。"},
+     {who:"你", txt:"（不闻而知断弦，这份耳力心思……）"},
+     {who:"你", txt:"姑娘好慧心。"},
+     {who:"谢清婳", face:"smile", txt:"琴理与治国一理：弦松则散，弦紧则断，唯中和方能成音。"}],
     choices:[{text:"叹服其慧，延以论学",eff:{int:+1}},{text:"命其续补散佚之典",eff:{int:+1}}]},
    {at:55,title:"兰台论典",text:"清婳历览群书，为你校雠散佚典籍、参详文治之道，每有所献皆切中肯綮。你读罢动容——此女胸中有家国。",
+    script:[
+     {cg:"2", txt:"谢清婳遍览群书，为你校雠散佚典籍、参详文治之道，每有所献，皆切中肯綮。"},
+     {who:"你", txt:"这些散佚多年的旧典，你竟一一补全了？"},
+     {who:"谢清婳", face:"neutral", txt:"典籍是一国之记忆。记忆断了，根就断了。妾舍不得。"},
+     {who:"你", txt:"（胸中有家国，非寻常闺秀可比。）"},
+     {who:"谢清婳", face:"pensive", txt:"陛下若肯重文教，妾愿把这一肚子学问，都交给陛下的江山。"}],
     choices:[{text:"当众褒扬其才情",eff:{prestige:-1,int:+1}},{text:"私下相邀夜话",eff:{health:-1,int:+1}}]},
    {at:85,title:"国士之许",text:"你以国士之礼相待，清婳感你惜才如金，终许身相从，愿为你整典籍、佐文治、相守白首……",join:true,
+    script:[
+     {cg:"3", txt:"你以国士之礼相待，亲为她整理书卷。谢清婳望着你，眼中似有泪光。"},
+     {who:"谢清婳", face:"pensive", txt:"世人重妾的出身、妾的容貌，唯陛下，重妾的才学。"},
+     {who:"你", txt:"明珠当配识珠人。你的才，朕识得。"},
+     {who:"谢清婳", face:"blush", txt:"得陛下这一句『识得』，妾此生足矣。"},
+     {who:"谢清婳", face:"bow", txt:"愿为陛下整典籍、佐文治，相守白首，不负所学。"}],
     choices:[{text:"纳为妃，引为文胆",eff:{int:+2}}]}]},
 
- {id:"mulan", name:"燕霜", portrait:_PC+"c_003.jpg", origin:"martial", woo:"martial", beauty:81, joinRank:3,
+ {id:"mulan", name:"燕霜", portrait:_PC+"mulan_neutral.jpg", origin:"martial", woo:"martial", beauty:81, joinRank:3,
   traitKey:"mulan", trait:{name:"巾帼知兵",desc:"巾帼知兵，亲历行伍，在宫则兵力月增 +1。"},
   unlock:{desc:"打赢一场战争（军功册上，一员『男装』小将竟是女儿身）", cond:s=>!!(s.flags&&s.flags.warWon)},
   scenes:[
    {at:25,title:"军中蹊跷",text:"大胜之后论功，一员屡立战功的小将入觐——你却觉其眉目清秀、声细如丝，举止间似有蹊跷。",
+    script:[
+     {cg:"1", txt:"大胜之后论功，一员屡立战功的小将入觐。你却觉其眉目清秀、声细如丝。"},
+     {who:"你", txt:"（这小将……举止间，似有蹊跷。）"},
+     {who:"燕霜", face:"neutral", txt:"末将燕霜，参见陛下。"},
+     {who:"你", txt:"燕将军屡建奇功。朕看你年纪轻轻，家中可还有亲人？"},
+     {who:"燕霜", face:"pensive", txt:"……回陛下，末将上有老父。末将从军，正是为他。"}],
     choices:[{text:"不动声色，暗加留意",eff:{}},{text:"屏退左右，温言相询",eff:{}}]},
    {at:55,title:"巾帼现身",text:"真相大白：她乃代父从军十二载的燕霜。卸去戎装、对镜理鬓，飒爽之中现出娇容，满座皆惊。",
+    script:[
+     {cg:"2", txt:"真相大白：她乃代父从军十二载的女儿身。卸去戎装、对镜理鬓，飒爽中现出娇容。"},
+     {txt:"满座皆惊。"},
+     {who:"燕霜", face:"pensive", txt:"末将……欺君之罪，甘领责罚。只是这十二年军功，是真刀真枪拼来的。"},
+     {who:"你", txt:"代父从军十二载，是大孝；沙场杀敌十二载，是大勇。何罪之有？"},
+     {who:"燕霜", face:"blush", txt:"陛下……当真不怪罪末将？"}],
     choices:[{text:"赦其欺君，嘉其至孝",eff:{prestige:+3}},{text:"惜其忠勇，留侍御前",eff:{military:+2}}]},
    {at:85,title:"巾帼之约",text:"燕霜本欲解甲归田、奉养双亲，你许她「忠孝两全、荣养还乡」之愿。她行一个端正的军礼，又含羞垂首……",join:true,
+    script:[
+     {cg:"3", txt:"你许她『忠孝两全、荣养还乡』之愿。燕霜挺直身子，向你行了一个端正的军礼。"},
+     {who:"燕霜", face:"neutral", txt:"末将这一生，先尽忠，后尽孝，从未为自己活过。"},
+     {who:"你", txt:"那往后呢？"},
+     {who:"燕霜", face:"blush", txt:"往后……末将想试试，为自己活一回。"},
+     {who:"燕霜", face:"smile", txt:"若陛下不弃这一身戎装气，燕霜，愿留在陛下身边。"}],
     choices:[{text:"纳为嫔，赐还乡荣养双亲",eff:{}}]}]},
 
- {id:"gongsun", name:"凌霄", portrait:_PC+"c_000.jpg", origin:"martial", woo:"martial", beauty:80, joinRank:2,
+ {id:"gongsun", name:"凌霄", portrait:_PC+"gongsun_neutral.jpg", origin:"martial", woo:"martial", beauty:80, joinRank:2,
   traitKey:"jianqi", trait:{name:"剑器通玄",desc:"剑舞通武理，常陪君演武，帝王武力缓涨。"},
   unlock:{desc:"帝王武力≥55（演武之余，慕剑器大家之名召之入宫）", cond:s=>s.emperor.martial>=55},
   scenes:[
    {at:25,title:"剑器惊鸿",text:"教坊第一人凌霄舞剑器，一舞而四座色沮，矫如群帝骖龙、来如雷霆收震怒——你看得心神俱往。",
+    script:[
+     {cg:"1", txt:"教坊第一人凌霄舞剑器。一舞而四座色沮，矫如群帝骖龙，来如雷霆收震怒。"},
+     {who:"你", txt:"好剑！这哪是舞，分明是杀阵。"},
+     {who:"凌霄", face:"smile", txt:"陛下好眼力！这套剑器，本就是从战阵里化出来的。"},
+     {who:"凌霄", face:"neutral", txt:"陛下若不嫌，敢请下场，与凌霄走两招？"}],
     choices:[{text:"亲下场与之论剑",eff:{martial:+1}},{text:"赐金帛，请其授艺",eff:{treasury:-3}}]},
    {at:55,title:"对舞通玄",text:"你常与凌霄对舞切磋，她剑走轻灵、你力贯长虹，一刚一柔，相得益彰。习剑既久，你武艺大进。",
+    script:[
+     {cg:"2", txt:"你常与凌霄对舞切磋。她剑走轻灵，你力贯长虹，一刚一柔，相得益彰。"},
+     {who:"凌霄", face:"smile", txt:"陛下这一剑又沉了三分！再练下去，凌霄可要接不住了。"},
+     {who:"你", txt:"与你对剑，比批一夜奏章还痛快。"},
+     {who:"凌霄", face:"neutral", txt:"剑是直的，人也该是直的。凌霄就喜欢陛下这份痛快。"}],
     choices:[{text:"引为剑友，惺惺相惜",eff:{martial:+1}},{text:"以国手之礼遇之",eff:{prestige:+1}}]},
    {at:85,title:"剑胆之许",text:"凌霄豪爽不拘，与你既是剑友、又生情愫。她一剑封鞘、行一个江湖礼：往后，护你左右，与你并辔看这天下……",join:true,
+    script:[
+     {cg:"3", txt:"一剑封鞘，凌霄向你抱拳，行了一个利落的江湖礼。"},
+     {who:"凌霄", face:"neutral", txt:"凌霄走南闯北，见惯了人情虚假。唯独陛下，与凌霄是真刀真枪地交心。"},
+     {who:"你", txt:"那这把剑，往后愿不愿为朕出鞘？"},
+     {who:"凌霄", face:"blush", txt:"剑为知己出。陛下既是知己……"},
+     {who:"凌霄", face:"smile", txt:"往后，护陛下左右，与陛下并辔，看遍这天下！"}],
     choices:[{text:"纳为贵人，并辔同游",eff:{}}]}]},
 
- {id:"furen", name:"安韶华", portrait:_PC+"c_004.jpg", origin:"noble", woo:"charm", beauty:95, joinRank:4,
+ {id:"furen", name:"安韶华", portrait:_PC+"furen_neutral.jpg", origin:"noble", woo:"charm", beauty:95, joinRank:4,
   traitKey:"qingguo", trait:{name:"倾城之姿",desc:"绝色摄魂，帝王魅力大涨；然红颜易老、其宠月有起落。"},
   unlock:{desc:"威望≥45＋已纳≥1妃（乐官于殿前歌『一顾倾城』，荐其妹入宫）",
     cond:s=>s.nation.prestige>=45&&s.consorts.length>=1},
@@ -513,28 +623,63 @@ const CONSORTS = [
      {who:"安韶华", face:"blush", txt:"陛下若不弃……臣女愿伴君，看这江山长久。"}],
     choices:[{text:"纳为妃，珍之重之",eff:{}}]}]},
 
- {id:"shouyang", name:"宇文蕴", portrait:_PC+"c_006.jpg", origin:"noble", woo:"charm", beauty:90, joinRank:5,
+ {id:"shouyang", name:"宇文蕴", portrait:_PC+"shouyang_neutral.jpg", origin:"noble", woo:"charm", beauty:90, joinRank:5,
   traitKey:"meihua", trait:{name:"凤仪天成",desc:"金枝玉叶，母仪有度，在宫则威望月增 +1、帝王魅力缓涨。"},
   unlock:{desc:"威望≥60＋国祚≥3（前朝嫡公主下嫁，以固盟好、彰天家气象）",
     cond:s=>s.nation.prestige>=60&&s.nation.year>=3},
   scenes:[
    {at:25,title:"金枝下嫁",text:"前朝嫡公主宇文蕴下嫁以固两国盟好。金枝玉叶，举止雍容，立于丹墀之上，自有一段天家风范。",
+    script:[
+     {cg:"1", txt:"前朝嫡公主宇文蕴下嫁，以固两国盟好。金枝玉叶，立于丹墀之上，自有一段天家风范。"},
+     {who:"宇文蕴", face:"neutral", txt:"本宫奉两国之约而来。陛下，往后还请以礼相待。"},
+     {who:"你", txt:"（不卑不亢，果有公主气度。）"},
+     {who:"你", txt:"公主放心，朕既迎你，必以国体相待。"},
+     {who:"宇文蕴", face:"neutral", txt:"如此，本宫便信陛下一回。"}],
     choices:[{text:"赞其天生丽质",eff:{charm:+1}},{text:"敬其身份，以礼相待",eff:{prestige:+1}}]},
    {at:55,title:"凤仪有度",text:"宇文蕴通晓礼乐典章，每为你参详宫廷仪轨、外邦觐见之仪，进退有度，颇助天朝威仪。",
+    script:[
+     {cg:"2", txt:"宇文蕴通晓礼乐典章，每为你参详宫廷仪轨、外邦觐见之仪，进退有度。"},
+     {who:"宇文蕴", face:"neutral", txt:"万邦来朝，礼不可乱。礼乱，则天朝威仪失。"},
+     {who:"你", txt:"有你执掌仪轨，朕这朝堂，体面多了。"},
+     {who:"宇文蕴", face:"smile", txt:"本宫自幼所学，总算……不只是为了联姻。"}],
     choices:[{text:"委以掌内廷礼仪",eff:{prestige:+2}},{text:"携之同御万邦来朝",eff:{prestige:+2}}]},
    {at:85,title:"凤仪之选",text:"公主出身高贵却不骄矜，与你日久情生。两家盟好、天作之合，群臣皆贺。今奉册宝，迎其入主东宫……",join:true,
+    script:[
+     {cg:"3", txt:"两家盟好，天作之合。今奉册宝，迎其入主东宫，群臣皆贺。"},
+     {who:"宇文蕴", face:"pensive", txt:"本宫这一生，先是棋子，后是筹码，身不由己。"},
+     {who:"你", txt:"在朕这里，你不是棋子，是宇文蕴。"},
+     {who:"宇文蕴", face:"blush", txt:"……陛下可知，这一句话，本宫等了多久。"},
+     {who:"宇文蕴", face:"bow", txt:"愿以凤仪母仪天下，与陛下共彰这天家气象。"}],
     choices:[{text:"纳为贵妃，以彰国体",eff:{prestige:+3}}]}]},
 
- {id:"nongyu", name:"云栖梧", portrait:_PC+"c_001.jpg", origin:"rare", woo:"int", beauty:93, joinRank:5,
+ {id:"nongyu", name:"云栖梧", portrait:_PC+"nongyu_neutral.jpg", origin:"rare", woo:"int", beauty:93, joinRank:5,
   traitKey:"xiao", trait:{name:"鸾箫和鸣",desc:"仙姿玉质，箫引祥瑞，在宫则国家六维月各受微益。"},
   unlock:{desc:"国祚≥5＋威望≥70（盛世祥瑞，方外仙眷慕治世清明而来）",
     cond:s=>s.nation.year>=5&&s.nation.prestige>=70},
   scenes:[
    {at:25,title:"凤楼闻箫",text:"夜阑人静，宫阙之上忽闻箫声清越、响遏行云。你循声而往，见一女子吹紫玉箫，云栖梧，仿若不食人间烟火。",
+    script:[
+     {cg:"1", txt:"夜阑人静，宫阙之上忽闻箫声清越、响遏行云。你循声而往。"},
+     {txt:"见一女子立于高楼，吹一支紫玉箫，仿若不食人间烟火。"},
+     {who:"你", txt:"姑娘是何方人氏？这箫声……不似人间所有。"},
+     {who:"云栖梧", face:"neutral", txt:"妾自方外来。一时贪看人间灯火，扰了陛下清梦。"},
+     {who:"云栖梧", face:"smile", txt:"陛下治下这盏盏灯火，比天上星辰，还要好看些。"}],
     choices:[{text:"屏息静听，不忍惊扰",eff:{int:+1}},{text:"以礼相邀，问其来历",eff:{}}]},
    {at:55,title:"鸾箫和鸣",text:"你习箫与之相和，一吹一应，竟引来彩凤翔集庭中、百鸟和鸣——左右皆称太平祥瑞、圣德所感。",
+    script:[
+     {cg:"2", txt:"你习箫与之相和，一吹一应。竟引来彩凤翔集庭中、百鸟和鸣。"},
+     {txt:"左右皆称：此乃太平祥瑞，圣德所感。"},
+     {who:"云栖梧", face:"smile", txt:"凤非梧不栖，非醴泉不饮。它们肯来，是因这世道，值得来。"},
+     {who:"你", txt:"那你呢？你肯来，又是为何？"},
+     {who:"云栖梧", face:"neutral", txt:"妾来看一个君王，能否把乱世，吹成这样一曲太平。"}],
     choices:[{text:"筑高台以待仙眷",eff:{treasury:-4,prestige:+2}},{text:"敬天惜福，谦冲自牧",eff:{prestige:+2}}]},
    {at:85,title:"乘鸾之约",text:"云栖梧本是方外仙眷，为你治世清明、苍生安乐所动，愿弃仙缘、留驻人间。今夕箫声为媒，结此良缘……",join:true,
+    script:[
+     {cg:"3", txt:"云栖梧本是方外仙眷，今夕箫声为媒，她眉间的清冷，化作了人间的温软。"},
+     {who:"云栖梧", face:"pensive", txt:"仙缘清苦，长生寂寞。妾在云端看了千年，从未动过凡心。"},
+     {who:"你", txt:"那如今呢？"},
+     {who:"云栖梧", face:"blush", txt:"如今……妾愿弃了这身仙缘，换人间数十年，与陛下朝暮相对。"},
+     {who:"云栖梧", face:"smile", txt:"一曲鸾箫，便是妾的聘礼。陛下，可愿娶妾？"}],
     choices:[{text:"纳为贵妃，珍若拱璧",eff:{prestige:+3}}]}]}
 ];
 function consortTpl(id){ return CONSORTS.find(c=>c.id===id); }
