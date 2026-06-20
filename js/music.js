@@ -95,7 +95,7 @@ function scheduleBeat(t,cfg){
   if(cfg.drum) drum(t);
 }
 function loop(){
-  if(!ctx||!enabled||!scene) return;
+  if(!ctx||!enabled||!scene||REAL_TRACKS[scene]) return;   // 真曲场景不再叠合成拨弦，避免冲突
   const cfg=SCENES[scene]; const ahead=0.3;
   while(nextT < ctx.currentTime+ahead){ scheduleBeat(nextT,cfg); nextT+=cfg.beat; }
 }
