@@ -651,9 +651,10 @@ const api = {
     if(s.pendingEvent){ this.toast("请先处理朝政奏折"); return; }
     if(!this._ff) SFX.deal();
     this.tally("turn");
+    let dayTurned=false;
     n.phase++;
     if(n.phase>2){                       // 一天过完
-      n.phase=0; n.day++;
+      n.phase=0; n.day++; dayTurned=true;
       this.dailyTick();
       if(s.over) return;
       if(n.day>MONTH_DAYS){              // 一月过完 → 结算
@@ -669,6 +670,12 @@ const api = {
     }
     if(this.checkEndings()) return;
     if(s._succession){ const d=s._succession; s._succession=null; UI.announceSuccession(d,()=>this.beginTurn()); return; }
+    if(dayTurned && !this._ff && typeof UI!=="undefined" && UI.dayTransition){
+      const MN=["","正","二","三","四","五","六","七","八","九","十","冬","腊"];
+      const date=`${n.year}年 ${MN[n.month]}月 ${n.day}日`;
+      const head = (n.month===1&&n.day===1) ? "新　岁" : (n.day===1 ? "新　月" : "翌　日");
+      UI.dayTransition(head, date, "晨光熹微，又是一日");
+    }
     this.beginTurn();
   },
 

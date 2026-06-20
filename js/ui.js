@@ -20,6 +20,18 @@ function toggleCampaignEmperor(){ campaignEmperor=!campaignEmperor; renderPanel(
 function doLaunchCampaign(){ const ids=[...campaignPick]; const emp=campaignEmperor;
   campaignPick=new Set(); campaignEmperor=false; Game.launchCampaign(ids,emp); }
 
+/* 日切换·拂晓过场动画（非阻塞·自动消退） */
+function dayTransition(head, date, sub){
+  const old=document.getElementById("day-transition"); if(old) old.remove();
+  const el=document.createElement("div"); el.id="day-transition";
+  el.innerHTML=`<div class="dt-sun"></div><div class="dt-card">
+    <div class="dt-head">${head}</div>
+    <div class="dt-date">${date}</div>
+    <div class="dt-sub">${sub||""}</div></div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{ if(el.parentNode) el.remove(); }, 1180);
+}
+
 /* 立绘解析：具体文件 or 按角色随机取一张 */
 function faceFor(role){
   const M=Game.manifest||{};
@@ -474,7 +486,7 @@ function boot(){
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
-  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, boot};
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, boot};
 })();
 
 UI.boot();
