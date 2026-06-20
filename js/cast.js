@@ -24,19 +24,22 @@ const ROSTER = [
   /* ============ 文官 8 ============ */
   { id:"c_chancellor", name:"澹台衡", title:"丞相", kind:"civil", tier:"high",
     portrait:"assets/portraits/ministers/m_002.jpg", personality:"谨慎",
-    base:{civ:88, mil:45, loyalty:90, ambition:12, age:58}, prefPost:"chancellor", start:true,
+    base:{civ:88, mil:45, loyalty:90, ambition:12, age:58}, prefPost:"chancellor",
+    unlock:{desc:"国祚≥2 或 威望≥45（贤相择主而仕）", cond:s=>s.nation.year>=2||s.nation.prestige>=45},
     story:"三朝元老，历相二帝。清慎自持，门无私谒，朝野谓之「冰台」。视澹台门生欧阳彻如己出，与度支卫缭水火不容——一清一浊，庙堂两端。",
     rel:[{to:"c_censor",type:"师徒",note:"亲传弟子"},{to:"c_finance",type:"政敌",note:"清浊之争"}] },
 
   { id:"c_finance", name:"卫缭", title:"度支尚书", kind:"civil", tier:"high",
     portrait:"assets/portraits/ministers/m_011.jpg", personality:"贪婪",
-    base:{civ:85, mil:40, loyalty:60, ambition:70, age:50}, prefPost:"finance", start:true,
+    base:{civ:85, mil:40, loyalty:60, ambition:70, age:50}, prefPost:"finance",
+    unlock:{desc:"威望≥30（理财能臣闻风来投）", cond:s=>s.nation.prestige>=30},
     story:"理财圣手，能于无米之炊中变出粮饷，故圣眷不衰。然私囊日丰，暗结大将军赫连勃、攀附国舅皇甫缙，庙堂之下别有沟壑。丞相澹台衡屡欲去之而不得。",
     rel:[{to:"c_chancellor",type:"政敌",note:"清浊之争"},{to:"m_marshal",type:"同党",note:"文武勾连"},{to:"c_kin",type:"盟友",note:"互为奥援"}] },
 
   { id:"c_censor", name:"欧阳彻", title:"御史大夫", kind:"civil", tier:"mid",
     portrait:"assets/portraits/ministers/m_023.jpg", personality:"刚直",
-    base:{civ:68, mil:30, loyalty:85, ambition:15, age:44}, prefPost:"censor", start:true,
+    base:{civ:68, mil:30, loyalty:85, ambition:15, age:44}, prefPost:"censor",
+    unlock:{desc:"威望≥35（铁面御史慕清明而至）", cond:s=>s.nation.prestige>=35},
     story:"铁面御史，弹劾不避权贵，朝臣见之侧目。出澹台衡门下，又亲授谏议南宫澈，清流一脉赖以不坠。最恨卫缭、皇甫缙之流，常思与密谍司里应外合，澄清玉宇。",
     rel:[{to:"c_chancellor",type:"师徒",note:"受业恩师"},{to:"c_remonstrant",type:"师徒",note:"亲传弟子"}] },
 
@@ -49,8 +52,7 @@ const ROSTER = [
 
   { id:"c_personnel", name:"裴蕴", title:"吏部侍郎", kind:"civil", tier:"mid",
     portrait:"assets/portraits/ministers/m_047.jpg", personality:"圆滑",
-    base:{civ:60, mil:28, loyalty:65, ambition:40, age:46}, prefPost:null,
-    unlock:{desc:"招贤可得", cond:null},
+    base:{civ:60, mil:28, loyalty:65, ambition:40, age:46}, prefPost:null, start:true,
     story:"掌铨选人事，八面玲珑，谁势大便附谁。清流浊党皆与之周旋而不深交，宦海浮沉二十年，竟未尝一败——亦未尝一立。",
     rel:[] },
 
@@ -70,15 +72,15 @@ const ROSTER = [
 
   { id:"c_remonstrant", name:"南宫澈", title:"谏议大夫", kind:"civil", tier:"low",
     portrait:"assets/portraits/ministers/m_071.jpg", personality:"刚直",
-    base:{civ:48, mil:20, loyalty:80, ambition:22, age:29}, prefPost:null,
-    unlock:{desc:"招贤可得", cond:null},
+    base:{civ:48, mil:20, loyalty:80, ambition:22, age:29}, prefPost:null, start:true,
     story:"新科状元，锐气逼人，初登朝便犯颜直谏。师事御史欧阳彻，以澄清天下自任。少不更事，然一片赤心可鉴。",
     rel:[{to:"c_censor",type:"师徒",note:"受业恩师"}] },
 
   /* ============ 武将 8 ============ */
   { id:"m_marshal", name:"赫连勃", title:"大将军", kind:"martial", tier:"high",
     portrait:"assets/portraits/generals/g_000.jpg", personality:"奸诈",
-    base:{mil:90, civ:42, loyalty:58, ambition:72, age:52}, prefPost:"marshal", start:true,
+    base:{mil:90, civ:42, loyalty:58, ambition:72, age:52}, prefPost:"marshal",
+    unlock:{desc:"威望≥45 或 国祚≥2（名将归于强主）", cond:s=>s.nation.prestige>=45||s.nation.year>=2},
     story:"军功盖世，总揽天下兵符，麾下骄兵悍将唯其马首是瞻。久蓄异志，内结度支卫缭以济粮饷、外联虎贲宇文泰为羽翼，朝堂之下俨然一国。独忌骠骑慕容垂之忠勇，恨不能除之。",
     rel:[{to:"c_finance",type:"同党",note:"文武勾连"},{to:"m_piaoqi",type:"世仇",note:"忠奸不并"},{to:"m_huben",type:"盟友",note:"爪牙之助"}] },
 
@@ -97,8 +99,7 @@ const ROSTER = [
 
   { id:"m_vanguard", name:"尉迟胜", title:"先锋校尉", kind:"martial", tier:"low",
     portrait:"assets/portraits/generals/g_003.jpg", personality:"刚直",
-    base:{mil:50, civ:18, loyalty:78, ambition:24, age:26}, prefPost:null,
-    unlock:{desc:"招贤可得", cond:null},
+    base:{mil:50, civ:18, loyalty:78, ambition:24, age:26}, prefPost:null, start:true,
     story:"独孤信帐下骁将，年少气盛，临阵一往无前。视独孤信如父，他人莫能动其志。璞玉未琢，假以时日必成大器。",
     rel:[{to:"m_zhenbei",type:"师徒",note:"恩同再造"}] },
 
