@@ -11,6 +11,15 @@ const ROLE_NAME={chancellor:"丞相",general:"大将军",censor:"御史大夫",f
 
 function show(name){ for(const k in screens) screens[k].classList.toggle("active",k===name); }
 
+/* 出征点将选择态 */
+let campaignPick=new Set(), campaignEmperor=false;
+function pickCampaign(id){ if(campaignPick.has(id)) campaignPick.delete(id);
+  else{ if(campaignPick.size>=4){ toast("至多点 4 员武将"); return; } campaignPick.add(id); }
+  renderPanel("army"); }
+function toggleCampaignEmperor(){ campaignEmperor=!campaignEmperor; renderPanel("army"); }
+function doLaunchCampaign(){ const ids=[...campaignPick]; const emp=campaignEmperor;
+  campaignPick=new Set(); campaignEmperor=false; Game.launchCampaign(ids,emp); }
+
 /* 立绘解析：具体文件 or 按角色随机取一张 */
 function faceFor(role){
   const M=Game.manifest||{};
@@ -267,14 +276,28 @@ function renderPanel(name){
     h+=`<p class="panel-tip">※ 教养可消耗当前时段提升皇嗣某一维（边际递减）；弱冠成年后定型。帝王驾崩时由太子（或最年长皇子）继位，绝嗣则亡国。</p>`;
   }
   else if(name==="army"){
-    const n=s.nation, marshal=s.ministers.find(m=>m.post==="marshal");
+    const n=s.nation, e=s.emperor;
+    const gens=s.ministers.filter(m=>m.kind==="martial");
     h+=`<div class="army-grid">
       <div>兵力 <b>${Math.round(n.military)}</b></div>
       <div>粮草 <b>${Math.round(n.food)}</b></div>
       <div>疆域 <b>${Math.round(n.land)}</b></div>
       <div>威望 <b>${Math.round(n.prestige)}</b></div></div>
-      <p class="panel-tip">大将军：${marshal?`${marshal.name}（武略 ${marshal.mil}）`:"<b>虚位以待</b>，请于朝堂任命"}。</p>
-      <p class="panel-tip">※ 番邦入寇或将军请战时，可遣大将军或御驾亲征。兵力、将领武略与陛下武力决定胜负。</p>`;
+      <p class="panel-tip"><b>点将出征</b>：点选随征武将（至多 4 员），开「沙盘会战」亲自布阵指挥。消耗本时段行动。</p>
+      <div class="muster">`;
+    if(!gens.length) h+=`<p class="panel-tip">朝中暂无武将，请于<b>朝堂·求贤</b>招募，或任命大将军。</p>`;
+    gens.forEach(g=>{
+      const on=campaignPick.has(g.id);
+      const wp=g.weapon?(()=>{const w=weaponById(g.weapon);return w?` ⚔${w.name}`:"";})():"";
+      h+=`<button class="mus-card ${on?"on":""}" onclick="UI.pickCampaign('${g.id}')">
+        ${img(g.portrait,"mus-face")}
+        <span class="mus-info"><b>${g.name}</b><i>武略 ${g.mil}${g.post==="marshal"?" · 大将军":""}${wp}</i></span>
+        <span class="mus-chk">${on?"✓":"＋"}</span></button>`;
+    });
+    h+=`</div>
+      <label class="mus-emp"><input type="checkbox" ${campaignEmperor?"checked":""} onclick="UI.toggleCampaignEmperor()"> 御驾亲征（陛下临阵·武力 ${Math.round(e.martial)}，强力但有风险）</label>
+      <button class="btn btn-primary mus-go" ${(campaignPick.size||campaignEmperor)?"":"disabled"} onclick="UI.doLaunchCampaign()">⚔ 点 将 出 征（${campaignPick.size}${campaignEmperor?"+帝":""}）</button>
+      <p class="panel-tip">※ 沙盘上有平原/山丘/密林/河流，地形影响移动与防御。亦可坐等「番邦入寇」随机应战（仓促战术对决）。</p>`;
   }
   else if(name==="log"){
     h+=`<div class="log-list">`+s.log.map(l=>`<div class="log-item">${l}</div>`).join("")+`</div>`;
@@ -450,7 +473,8 @@ function boot(){
 
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
-  openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle, boot};
+  openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, boot};
 })();
 
 UI.boot();

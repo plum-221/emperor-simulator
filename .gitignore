@@ -6,6 +6,7 @@ Thumbs.db
 # 内部开发 / 协作产物（不入公开仓库）
 _*.py
 _*.js
+_*.png
 _preview/
 task_plan.md
 findings.md

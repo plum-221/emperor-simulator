@@ -553,6 +553,31 @@ const api = {
       choices:enc.choices.map(ch=>({text:ch.text, effects:ch.eff, do:(G2)=>G2.nextEncounter()}))});
   },
 
+  /* ---------- 主动出征：点将 → 沙盘会战（WarfieldSys 网格战棋）---------- */
+  launchCampaign(genIds, withEmperor){
+    const s=this.s, n=s.nation;
+    if(s.actedThisTurn){ this.toast("此时段已行一事，明日再战"); return; }
+    if(s.pendingEvent){ this.toast("请先处理朝政"); return; }
+    if(n.military<15){ this.toast("兵力凋敝，不堪一战"); return; }
+    const gens=s.ministers.filter(m=>genIds&&genIds.includes(m.id));
+    if(!gens.length && !withEmperor){ this.toast("请先点选出征武将（或御驾亲征）"); return; }
+    const enemy=R.pick(ENEMIES);
+    const ePow=R.i(45,80)+n.year+(withEmperor?6:0);
+    const marshal=gens.find(g=>g.post==="marshal")||gens[0]||null;
+    const done=(res)=>{
+      s.actedThisTurn=true;
+      this.resolveWar(withEmperor?"emperor":"offense", res, enemy, marshal);
+    };
+    if(typeof WarfieldSys!=="undefined" && WarfieldSys.open){
+      UI.closePanel();
+      WarfieldSys.open({ enemy, ourMilitary:n.military, generals:gens,
+        emperor:s.emperor, withEmperor:!!withEmperor, enemyPow:ePow, onResolve:done });
+    }else{   // 无头兜底：即时判定
+      const our=n.military*0.5+(withEmperor?s.emperor.martial:0)+(marshal?marshal.mil:20);
+      done({win:(our+R.i(-15,30))>=(ePow+R.i(-10,25)), ourHP:60, rounds:0});
+    }
+  },
+
   /* ---------- 战争 ---------- */
   startWar(type){
     const s=this.s, n=s.nation;
