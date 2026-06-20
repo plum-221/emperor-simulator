@@ -32,6 +32,9 @@ function dayTransition(head, date, sub){
   setTimeout(()=>{ if(el.parentNode) el.remove(); }, 1180);
 }
 
+/* 密谍司管理面板（朝堂·密谍司按钮打开） */
+function openSpy(){ if(typeof SpySys==="undefined") return; openModal(SpySys.panelHTML(Game.s)); }
+
 /* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 📜 打开） */
 function openCharacter(id){
   const s=Game.s; const m=s.ministers.find(x=>x.id===id||x.castId===id); if(!m) return;
@@ -210,6 +213,13 @@ function renderPanel(name){
       <div class="recruit-bar">
         <div class="rc-info"><b>武库</b><span>已得武器 <b>${owned.length}</b>/${WEAPONS.length} · 抽中已有→碎片。佩于将相提其文/武。</span></div>
         <button class="btn btn-primary rc-btn" ${(s.recruitPoints||0)<GACHA.cost?"disabled":""} onclick="Game.weaponDraw()">铸兵 ⚔ ${GACHA.cost}点</button>
+      </div>`;
+      // 密谍司
+      const spyEst=(typeof SpySys!=="undefined")&&SpySys.established(s);
+      const spyAlert=spyEst&&s.ministers.some(m=>m.secret&&(m.secret.cabal.progress>=55||m.secret.treason>=45));
+      h+=`<div class="recruit-bar spy-bar${spyAlert?' alert':''}">
+        <div class="rc-info"><b>⟁ 密谍司</b><span>${spyEst?`司阶 <b>Lv${s.spy.level}</b> · 眼线 ${(s.spy.watch||[]).length}/${1+(s.spy.level||1)}。密察百官私行，每夜戌时密呈。`:'设耳目于朝野，密察 结党/贪墨/通敌/构陷，每夜密报真账。'}</span></div>
+        <button class="btn btn-primary rc-btn" onclick="UI.openSpy()">${spyEst?(spyAlert?'⚠ 密谍司':'密谍司'):'设立 ⟁'}</button>
       </div>`;
       if(owned.length) h+=`<div class="armory">`+owned.map(w=>{const tg=GACHA.tiers[w.tier];const on=s.ministers.find(x=>x.weapon===w.id);
         const lv=(s.weaponLv&&s.weaponLv[w.id])||0; const eff=w.bonus+lv*FORGE_STEP;
@@ -525,7 +535,7 @@ function boot(){
 return {toGame:()=>show("game"), renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
-  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, boot};
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, boot};
 })();
 
 UI.boot();

@@ -70,6 +70,7 @@ const api = {
     };
     // 官职即身份：固定班底登朝自动就位（makeFromCast 已置 post），无需玩家指派
     MapSys.initState(this.s);
+    if(typeof SpySys!=="undefined") SpySys.init(this.s);   // 密谍司 + 百官隐藏暗面
     if(typeof QuestSys!=="undefined") QuestSys.initState(this.s);
     this.logMsg(`${this.s.dynasty}立国，${this.s.reign}帝即位，时年${this.s.emperor.age}岁。`);
     UI.toGame();
@@ -92,7 +93,8 @@ const api = {
   beginTurn(){
     const s=this.s; if(s.over) return;
     s.actedThisTurn=false;
-    s.pendingEvent=this.rollEvent();
+    if(s._spyEvent){ s.pendingEvent=s._spyEvent; s._spyEvent=null; }  // 密谍司养熟爆变优先
+    else s.pendingEvent=this.rollEvent();
     this.renderTurn();
   },
 
@@ -285,12 +287,78 @@ const api = {
     if(want==="high" && c.tier!=="high") s.gachaPity=GACHA.pity;  // 保底未真出大才则不清零
     const m = makeFromCast(c);
     s.ministers.push(m); SFX.gong(); this.tally("recruit");
+    if(typeof SpySys!=="undefined") SpySys.ensure(s);   // 新臣即生隐藏暗面
     this.logMsg(`招贤纳【${tier.name}${tier.star}】${m.title}·${m.name}（文${m.civ}·武${m.mil}）。`);
     UI.showRecruit(m);
     UI.renderPanel("court"); this.renderTurn();
     return m;
   },
   earnPoints(n,reason){ const s=this.s; if(n<=0)return; s.recruitPoints=(s.recruitPoints||0)+n; if(reason)this.logMsg(`${reason}，招贤点 +${n}。`); },
+
+  /* ---------- 密谍司：设立 / 升级 / 派谍 / 处置 / 夜报 / 养熟爆变 ---------- */
+  spyEstablish(){ const s=this.s; if(s.spy&&s.spy.est) return;
+    const free=s.ministers.some(m=>m.post==="spymaster"), cost=free?0:15;
+    if(s.nation.treasury<cost){ this.toast(`国库不足（需 ${cost}）`); return; }
+    s.nation.treasury-=cost; if(!s.spy)SpySys.init(s); s.spy.est=true;
+    SFX.gong(); this.toast("密谍司已设，耳目遍布朝野。"); this.logMsg("设立密谍司，密察百官私行。");
+    UI.openModal(SpySys.panelHTML(s)); this.renderTurn();
+  },
+  spyUpgrade(){ const s=this.s; if(!s.spy||!s.spy.est) return;
+    const lv=s.spy.level||1; if(lv>=SpySys.MAXLV){ this.toast("密谍司已臻极境"); return; }
+    const cost=SpySys.upgradeCost(lv);
+    if(s.nation.treasury<cost){ this.toast(`国库不足（需 ${cost}）`); return; }
+    s.nation.treasury-=cost; s.spy.level=lv+1; SFX.good();
+    this.toast(`密谍司扩充至 Lv${lv+1}，眼线更广、所报更精。`);
+    UI.openModal(SpySys.panelHTML(s)); this.renderTurn();
+  },
+  spyWatch(id){ const s=this.s; const r=SpySys.toggleWatch(s,id);
+    if(r==="full") this.toast("眼线已尽，先撤一处或扩充密谍司"); else SFX.pick();
+    UI.openModal(SpySys.panelHTML(s)); },
+  _spyFind(id){ return this.s.ministers.find(m=>(m.castId||m.id)===id); },
+  spyAudit(id){ const s=this.s, m=this._spyFind(id); if(!m||!m.secret) return;
+    const got=Math.round(m.secret.graft*0.9); s.nation.treasury=R.clamp(s.nation.treasury+got);
+    m.secret.graft=0; m.loyalty=R.clamp(m.loyalty-6); m.secret.trueLoyalty=R.clamp(m.secret.trueLoyalty-4);
+    SFX.good(); this.toast(`查抄 ${m.name} 之贪墨，追回国库 +${got}（其怀怨）`);
+    this.logMsg(`密谍司查抄 ${m.name} 贪墨，没入国库 +${got}。`);
+    UI.openModal(SpySys.panelHTML(s)); this.renderTurn();
+  },
+  spyWarn(id){ const s=this.s, m=this._spyFind(id); if(!m||!m.secret) return;
+    m.secret.cabal.progress=Math.max(0,m.secret.cabal.progress-35);
+    m.secret.scheme.progress=Math.max(0,m.secret.scheme.progress-35);
+    m.secret.trueLoyalty=R.clamp(m.secret.trueLoyalty-3); m.ambition=R.clamp(m.ambition-4);
+    SFX.pick(); this.toast(`敲打 ${m.name}，其结党构陷暂息（然记恨于心）`);
+    this.logMsg(`密谍司敲打 ${m.name}，挫其私谋。`);
+    UI.openModal(SpySys.panelHTML(s)); this.renderTurn();
+  },
+  spyArrest(id){ const s=this.s, i=s.ministers.findIndex(m=>(m.castId||m.id)===id); if(i<0) return;
+    const m=s.ministers[i], post=m.post; m.post=null; s.ministers.splice(i,1);
+    if(m.portrait&&!s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    if(m.castId&&!(s.exiled||[]).includes(m.castId)) (s.exiled=s.exiled||[]).push(m.castId);
+    this.shiftAllLoyalty(-2); this.checkRomanceBreak(post);
+    SFX.bad(); this.toast(`先发制人，${m.name} 已下狱拿问，逆谋消弭。`);
+    this.logMsg(`密谍司拿问 ${m.name}，其党羽星散。`);
+    UI.closeModal(); UI.renderPanel("court"); this.renderTurn();
+  },
+  /* 暗线养熟 → 爆大事件（每日检） */
+  spyMaturity(){ const s=this.s;
+    for(const m of s.ministers){ const sec=m.secret; if(!sec) continue;
+      if(sec.cabal.progress>=100 && !s.rebel){           // 结党养成 → 谋反
+        s.rebel={id:m.id, name:m.name}; sec.cabal.progress=70;
+        this.logMsg(`【惊变】${m.name} 结党已成，反形毕露！`); return;
+      }
+      if(sec.treason>=100 && !s._spyEvent){               // 通敌养成 → 里通外敌偷袭
+        sec.treason=40; const loss=R.i(10,20); const tid=m.id;
+        s.nation.military=R.clamp(s.nation.military-loss); s.nation.treasury=R.clamp(s.nation.treasury-8);
+        s._spyEvent={title:"通敌之祸",role:"general",big:true,
+          text:`${m.title}·${m.name} 暗通番邦，引寇内犯！边关告急，兵力 -${loss}。`,
+          choices:[{text:"彻查严办",do:G=>{ const j=G.s.ministers.findIndex(x=>x.id===tid);
+            if(j>=0){ const mm=G.s.ministers[j]; mm.post=null; G.s.ministers.splice(j,1);
+              if(mm.castId)(G.s.exiled=G.s.exiled||[]).push(mm.castId); } G.shiftAllLoyalty(-3); }},
+            {text:"暂且隐忍",do:G=>{ G.s.nation.prestige=R.clamp(G.s.nation.prestige-6); }}]};
+        return;
+      }
+    }
+  },
   /* ---------- 养成：武将经验/升级/突破 + 帝王天赋 ---------- */
   hasTalent(id){ return (this.s.talents||[]).includes(id); },
   gainExp(m,n){
@@ -687,12 +755,18 @@ const api = {
       UI.dayTransition(head, date, "晨光熹微，又是一日");
     }
     this.beginTurn();
+    // 入夜密报：密谍司戌时密呈（仅有异动才弹·快进静默）
+    if(n.phase===2 && !this._ff && typeof SpySys!=="undefined" && SpySys.established(s)){
+      const rec=SpySys.nightReport(s);
+      if(rec && (rec.items.length||rec.alert) && !s.pendingEvent) UI.openModal(SpySys.reportHTML(rec));
+    }
   },
 
-  /* 每日：轻量推进（健康微漂移，留作日后扩展钩子）*/
+  /* 每日：轻量推进（健康微漂移 + 百官暗面演化 + 暗线养熟检测）*/
   dailyTick(){
     const e=this.s.emperor;
     if(R.chance(8)) e.health-=1;         // 日常损耗（约每月 -2~3，与原月制相当）
+    if(typeof SpySys!=="undefined"){ SpySys.tick(this.s); this.spyMaturity(); }  // 私下勾当暗中滋长
     this.clampAll();
   },
 
@@ -854,7 +928,7 @@ const api = {
   /* 旧档字段补全（惰性 migration），新存档结构变化时在此兜底 */
   _migrate(d){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; if(!d.weaponLv)d.weaponLv={}; if(!d.talents)d.talents=[]; if(d.talentPts==null)d.talentPts=0; return d; },
   /* 把一份状态对象装载为当前游戏并进入游戏界面 */
-  _adopt(d){ this._migrate(d); this.s=d; MapSys.initState(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); },
+  _adopt(d){ this._migrate(d); this.s=d; MapSys.initState(this.s); if(typeof SpySys!=="undefined") SpySys.init(this.s); if(typeof QuestSys!=="undefined") QuestSys.initState(this.s); UI.toGame(); this.renderTurn(); },
   load(){ try{ const d=JSON.parse(localStorage.getItem(LS_SAVE)); if(d&&!d.over){ this._adopt(d); return true; } }catch(e){} return false; },
 
   /* ---------- 多格手动存档（与自动存档「继续上局」并存）---------- */
