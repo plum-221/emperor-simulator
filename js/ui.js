@@ -35,6 +35,38 @@ function dayTransition(head, date, sub){
 /* 密谍司管理面板（朝堂·密谍司按钮打开） */
 function openSpy(){ if(typeof SpySys==="undefined") return; openModal(SpySys.panelHTML(Game.s)); }
 
+/* 问罪：依罪证罢黜/诛戮，无罪证不得擅诛（妄诛遭反噬） */
+function openImpeach(id){
+  const s=Game.s, m=s.ministers.find(x=>x.id===id); if(!m) return;
+  const charges=Game.chargesAgainst(m);
+  const top = charges.slice().sort((a,b)=>b.sev-a.sev)[0];
+  const cname = top ? top.name : "";
+  let h=`<div class="impeach">
+    <h2 class="imp-h">⚖ 问 罪</h2>
+    <div class="imp-who">${img(m.portrait,"imp-face")}
+      <div><div class="imp-name"><b>${m.name}</b><span>${m.title||""}</span></div>
+      <div class="imp-loy">表面忠诚 ${Math.round(m.loyalty)}</div></div></div>`;
+  if(charges.length){
+    h+=`<div class="imp-sec">查得罪证</div><div class="imp-charges">`+
+      charges.map(c=>`<div class="imp-charge sev${c.sev}">⚖ ${c.name}</div>`).join("")+`</div>`;
+    h+=`<p class="imp-tip">罪证确凿，问罪有据，朝纲得正。</p>
+      <div class="imp-acts">
+        <button class="btn warn" onclick="Game.dismissMinister('${m.id}','${cname}')">依律罢黜</button>
+        <button class="btn btn-primary danger-btn" onclick="Game.executeMinister('${m.id}','${cname}')">明正典刑 · 处死</button>
+      </div>`;
+  }else{
+    h+=`<div class="imp-sec">查无实据</div>
+      <p class="imp-tip warn-tip">经查，${m.name} 持身尚正，并无确凿罪证。<b>妄诛忠良必失天下人心。</b><br>欲知其私行，可遣<b>密谍司</b>密察。</p>
+      <div class="imp-acts">
+        <button class="btn ghost" onclick="UI.closeModal();UI.openSpy()">⟁ 遣密谍司查察</button>
+        <button class="btn warn" onclick="Game.dismissMinister('${m.id}','')">无故罢黜（百官寒心）</button>
+      </div>
+      <p class="imp-note">※ 无罪证不可处死；强行罢黜将折损威望、百官离心。</p>`;
+  }
+  h+=`</div>`;
+  openModal(h);
+}
+
 /* 人物详情：身份 / 背景故事 / 关系网（点大臣卡 📜 打开） */
 function openCharacter(id){
   const s=Game.s; const m=s.ministers.find(x=>x.id===id||x.castId===id); if(!m) return;
@@ -238,11 +270,11 @@ function renderPanel(name){
       const bkBtn=selecting?"":`<button class="chip ${canBk&&(s.shards||0)>=8?"gold":""}" ${canBk?"":"disabled"} onclick="Game.breakthrough('${m.id}')" title="Lv5且非满星可突破·耗碎片8">突破 ⤴${canBk?" ✦8":""}</button>`;
       const wpSel=(!selecting&&owned.length)?`<select class="wp-sel" onchange="Game.equipWeapon('${m.id}',this.value)">
         <option value="">⚔ 佩兵…</option>`+owned.map(w=>`<option value="${w.id}" ${m.weapon===w.id?"selected":""}>${w.name} ${w.stat==="mil"?"武":"文"}+${w.bonus+((s.weaponLv&&s.weaponLv[w.id])||0)*FORGE_STEP}</option>`).join("")+`</select>`:"";
-      // 官职即身份：登朝自动就位、不可指派；此处仅余「养成/赏罚」类操作
+      // 官职即身份：登朝自动就位、不可指派；赏赐/养成 + 问罪（须有罪证方可罢黜诛戮）
+      const nCharges=Game.chargesAgainst(m).length;
       const postBtns=selecting?"":`<div class="post-row">`+
         `<button class="chip" onclick="Game.rewardMinister('${m.id}')">赏赐</button>`+upBtn+bkBtn+wpSel+
-        `<button class="chip warn" onclick="Game.dismissMinister('${m.id}')">罢免</button>`+
-        `<button class="chip danger" onclick="Game.executeMinister('${m.id}')">处死</button></div>`;
+        `<button class="chip ${nCharges?'danger':'warn'}" onclick="UI.openImpeach('${m.id}')" title="问罪：依密谍司查得之罪证罢黜或诛戮">⚖ 问罪${nCharges?` <em class="chg">${nCharges}</em>`:""}</button></div>`;
       const wpTag=m.weapon?(()=>{const w=weaponById(m.weapon);return w?`<span class="m-wp" title="${w.desc}">⚔${w.name}</span>`:"";})():"";
       return `<div class="m-card" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
@@ -542,7 +574,7 @@ function boot(){
 return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.setScene("court"); }, renderHUD, renderEmperor, showEvent, showMonth, renderActions,
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
-  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy,
+  pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
   toggleMusic, toggleSfx, boot};
 })();
 

@@ -560,6 +560,26 @@ b{color:var(--gold-br);font-weight:600;}
 .ch-rn{color:#8a6a3a;font-style:italic;margin-left:auto;}
 .ch-rel-none{font-size:12.5px;color:#8a6a3a;font-style:italic;}
 
+/* ============ 问罪 ============ */
+.post-row .chg{font-style:normal;background:var(--red);color:#ffe;border-radius:7px;padding:0 5px;font-size:10px;margin-left:2px;}
+.impeach{color:var(--ink);}
+.imp-h{text-align:center;color:var(--red-deep);font-size:20px;letter-spacing:.3em;margin:0 0 10px;}
+.imp-who{display:flex;gap:12px;align-items:center;margin-bottom:8px;}
+.imp-face{width:60px;height:74px;border-radius:7px;object-fit:cover;border:1px solid var(--gold-dk);}
+.imp-name b{font-size:18px;color:var(--ink);}
+.imp-name span{font-size:12px;color:#8a6a3a;margin-left:6px;}
+.imp-loy{font-size:12px;color:#6a4a2a;margin-top:4px;}
+.imp-sec{font-size:13px;color:var(--gold-dk);font-weight:600;letter-spacing:.15em;border-bottom:1px dashed rgba(154,115,39,.4);padding-bottom:3px;margin:10px 0 7px;}
+.imp-charges{display:flex;flex-direction:column;gap:5px;}
+.imp-charge{font-size:13px;padding:6px 10px;border-radius:7px;background:rgba(179,38,30,.08);border-left:3px solid var(--red);color:var(--red-deep);}
+.imp-charge.sev3{background:rgba(111,21,15,.14);font-weight:600;}
+.imp-tip{font-size:12.5px;color:#5a3a1a;line-height:1.7;margin:8px 0;}
+.imp-tip.warn-tip{color:#7a3a1a;background:rgba(217,182,95,.08);padding:9px 11px;border-radius:8px;}
+.imp-acts{display:flex;gap:8px;margin-top:10px;}
+.imp-acts .btn{flex:1;padding:10px;font-size:14px;}
+.danger-btn{background:linear-gradient(180deg,#b3261e,#6f150f)!important;border-color:#6f150f!important;}
+.imp-note{font-size:11px;color:#9a8a6a;margin-top:8px;text-align:center;}
+
 /* ============ 密谍司 ============ */
 .spy-bar.alert{border-color:var(--red)!important;box-shadow:0 0 0 1px var(--red),0 0 12px rgba(179,38,30,.4);}
 .spy{color:var(--ink);}

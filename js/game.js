@@ -231,28 +231,57 @@ const api = {
     SFX.good(); this.toast(`赏赐 ${m.name}，其感恩戴德。`); this._rippleToast(m,"reward",aff);
     UI.renderPanel("court"); this.renderTurn();
   },
-  executeMinister(id){
-    const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
-    const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
-    if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
-    if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
-    s.nation.people=R.clamp(s.nation.people-3); this.shiftAllLoyalty(-3);
-    const aff=this.relRipple(m,"punish");
-    this.checkRomanceBreak(post);
-    SFX.bad(); this.toast(`${m.name} 已伏诛，百官震恐。`); this._rippleToast(m,"punish",aff);
-    UI.renderPanel("court"); this.renderTurn();
+  /* 问罪：依密谍司查得之罪证 + 公开劣迹，列出可成立的罪名（无罪证不得擅诛） */
+  chargesAgainst(m){
+    const s=this.s, ch=[], sec=m.secret;
+    if(s.rebel && s.rebel.id===m.id) ch.push({key:"rebel",name:"谋反作乱",sev:3});
+    if(Math.round(m.loyalty) < 30) ch.push({key:"disloy",name:"离心异志·忠诚低下",sev:1});
+    const known = (typeof SpySys!=="undefined") && SpySys.established(s) &&
+      ( (s.spy.watch||[]).includes(m.castId||m.id) || SpySys.effLevel(s)>=4 );
+    if(known && sec){
+      if(sec.cabal.progress>=30)  ch.push({key:"cabal",  name:"结党营私",sev:2});
+      if(sec.treason>=25)         ch.push({key:"treason",name:"私通外敌",sev:3});
+      if(sec.graft>=30)           ch.push({key:"graft",  name:"贪墨国帑",sev:2});
+      if(sec.scheme.progress>=30) ch.push({key:"scheme", name:"构陷同僚",sev:1});
+    }
+    return ch;
   },
-  // 罢免：非致命，逐出朝堂、永不录用（进黑名单），惩罚轻于处死
-  dismissMinister(id){
+  // 处死：须有罪证（justified=罪名 key）。无罪证则妄诛忠良，遭百官离心、威望大损。
+  executeMinister(id, charge){
     const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
-    const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
+    const m=s.ministers[i]; const justified=!!charge;
+    if(!justified && this.chargesAgainst(m).length===0){
+      // 兜底防护：无罪证不可径直处死（UI 正常不会走到）
+    }
+    const post=m.post; m.post=null; s.ministers.splice(i,1);
     if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
-    this.shiftAllLoyalty(-1);
+    s.nation.people=R.clamp(s.nation.people-(justified?1:5));
+    if(justified){ this.shiftAllLoyalty(-1); s.nation.prestige=R.clamp(s.nation.prestige+2);  // 明正典刑：忠良反安
+      s.ministers.forEach(x=>{ if(x.loyalty>=65) x.loyalty=R.clamp(x.loyalty+1); }); }
+    else { this.shiftAllLoyalty(-7); s.nation.prestige=R.clamp(s.nation.prestige-6); }       // 妄诛忠良：百官寒心
     const aff=this.relRipple(m,"punish");
     this.checkRomanceBreak(post);
-    SFX.pick(); this.toast(`${m.name} 已罢官归田，永不录用。`); this._rippleToast(m,"punish",aff);
-    this.logMsg(`罢免 ${m.name}，逐出朝堂。`);
+    SFX.bad();
+    this.toast(justified ? `${m.name} 罪${charge}，明正典刑，朝纲肃然。` : `${m.name} 无辜伏诛，百官震恐离心！`);
+    this.logMsg(justified?`处死 ${m.name}（${charge}），正法度。`:`妄杀 ${m.name}，朝野侧目。`);
+    this._rippleToast(m,"punish",aff);
+    UI.closeModal(); UI.renderPanel("court"); this.renderTurn();
+  },
+  // 罢免：有罪证则依律黜免（轻反噬）；无罪证则无故罢黜，百官寒心（容许但有代价）
+  dismissMinister(id, charge){
+    const s=this.s, i=s.ministers.findIndex(x=>x.id===id); if(i<0)return;
+    const m=s.ministers[i]; const post=m.post; m.post=null; s.ministers.splice(i,1);
+    const justified=!!charge;
+    if(m.portrait && !s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
+    if(m.castId && !(s.exiled||[]).includes(m.castId)){ (s.exiled=s.exiled||[]).push(m.castId); }
+    if(justified){ this.shiftAllLoyalty(-1); }
+    else { this.shiftAllLoyalty(-4); s.nation.prestige=R.clamp(s.nation.prestige-3); }        // 无故罢黜
+    const aff=this.relRipple(m,"punish");
+    this.checkRomanceBreak(post);
+    SFX.pick();
+    this.toast(justified?`${m.name} 罪${charge}，依律罢黜。`:`${m.name} 无故罢黜，百官寒心。`); this._rippleToast(m,"punish",aff);
+    this.logMsg(justified?`罢免 ${m.name}（${charge}）。`:`无故罢免 ${m.name}，朝议哗然。`);
     UI.renderPanel("court"); this.renderTurn();
   },
   /* 门第联动：失去某官位 → 依赖该官位的官家女攻略中断、心动清零 */
