@@ -211,7 +211,14 @@ const api = {
   /* ---------- 任命 / 后宫管理 ---------- */
   appoint(id,post){
     const s=this.s, m=s.ministers.find(x=>x.id===id); if(!m)return;
-    if(post){ const old=s.ministers.find(x=>x.post===post); if(old)old.post=null; m.post=post; }
+    if(post){
+      const P=POSITIONS.find(p=>p.id===post); if(!P) return;
+      // 文职只授文官、武职只授武将——官职不可乱设
+      const fit = P.use==="mil" ? m.kind==="martial" : m.kind==="civil";
+      if(!fit){ this.toast(P.use==="mil"?"武职须授武将":"文职须授文官"); return; }
+      const old=s.ministers.find(x=>x.post===post); if(old)old.post=null;   // 该职单人·顶替旧任
+      m.post=post;
+    }
     else m.post=null;
     SFX.pick(); UI.renderPanel("court");
   },
