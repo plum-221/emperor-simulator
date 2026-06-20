@@ -570,8 +570,27 @@ const api = {
     this.toast(`与 ${tpl.name} ${kind==="gift"?"赠礼":"相会"}，心动 +${gain}（${r.aff}/100）`);
     // 心动跨阈值 → 触发未演的剧情幕
     const idx=tpl.scenes.findIndex((sc,i)=>!r.seen.includes(i) && r.aff>=sc.at);
-    if(idx>=0){ r.seen.push(idx); this.showSceneCard(tpl,tpl.scenes[idx]); UI.closePanel(); this.afterEvent(); return; }
+    if(idx>=0){ r.seen.push(idx); const scene=tpl.scenes[idx]; UI.closePanel();
+      if(scene.script && typeof VNSys!=="undefined"){ this.playSceneVN(tpl,scene); }   // galgame 对话式
+      else { this.showSceneCard(tpl,scene); this.afterEvent(); }                        // 回退：事件卡
+      return; }
     UI.renderPanel("harem"); this.renderTurn();
+  },
+
+  /* galgame 式对话剧情：复用 resolveEvent 结算（VN 选完回调 → 应用 eff/join/日志）*/
+  playSceneVN(tpl,scene){
+    const choices=scene.choices.map(ch=>{ const c={text:ch.text,effects:ch.eff||{}}; if(scene.join) c.do=(G)=>G.joinConsort(tpl.id); return c; });
+    this.s.pendingEvent={title:scene.title, role:"consort", _face:tpl.portrait,
+      text:`【${ORIGINS[tpl.origin].name} · ${tpl.name}】 ${scene.text}`, choices};
+    VNSys.play({
+      name: tpl.name,
+      faceBase: "assets/portraits/consorts/"+tpl.id+"_",
+      fallbackFace: tpl.portrait,
+      cgBase: "assets/scenes/cg_"+tpl.id+"_",
+      bg: "assets/scenes/harem.jpg",
+      script: scene.script,
+      choices: choices.map(c=>({text:c.text}))
+    }, (idx)=>{ this.resolveEvent(idx); });
   },
 
   /* 把一幕剧情包装成事件卡（复用 showCard/resolveEvent；末幕选项触发入宫）*/
