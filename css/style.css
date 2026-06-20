@@ -521,6 +521,8 @@ b{color:var(--gold-br);font-weight:600;}
 .wf-log-item{font-size:11.5px;color:#6a4a2a;line-height:1.4;}
 .wf-log-item.fresh{color:var(--red-deep);font-weight:600;}
 
+.build-stamp{text-align:center;font-size:10px;color:rgba(217,182,95,.4);letter-spacing:.1em;margin:6px 0 0;}
+
 /* ============ 人物身份/关系 查看 ============ */
 .m-title{font-size:11px;color:#c8a866;margin-left:4px;}
 .m-view{margin-left:auto;background:transparent;border:none;cursor:pointer;font-size:15px;
