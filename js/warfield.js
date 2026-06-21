@@ -15,8 +15,17 @@ const TERRAIN={
   wood: {key:"wood", name:"密林",move:2,def:0.15,ico:"林"},
   water:{key:"water",name:"河流",move:99,def:0,  ico:"〜"}
 };
+/* 兵种：各有射程(rng)/机动(move)与克制(beats)。步克骑·骑克弓·弓克步（循环）。*/
+const ARM={
+  bu:  {key:"bu",  name:"步兵", glyph:"步", rng:1, move:3, beats:"qi",   desc:"结阵持戈·克骑兵·近战"},
+  qi:  {key:"qi",  name:"骑兵", glyph:"骑", rng:1, move:4, beats:"gong", desc:"长驱奔袭·克弓兵·机动远"},
+  gong:{key:"gong",name:"弓兵", glyph:"弓", rng:2, move:2, beats:"bu",   desc:"远程攒射·克步兵·射程远"}
+};
+const COUNTER_MUL=1.5;                       // 克制方伤害倍率
+function counters(a,b){ return !!(ARM[a]&&ARM[a].beats===b); }
 let B=null;
 const rnd=(a,b)=>a+Math.random()*(b-a);
+function leaderOf(side){ return B.units.find(u=>u.side===side&&u.isLeader); }   // 主将（擒贼擒王判定用）
 const key=(x,y)=>x+","+y;
 const inB=(x,y)=>x>=0&&x<COLS&&y>=0&&y<ROWS;
 const manh=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
@@ -41,43 +50,48 @@ function mkUnit(o){ return Object.assign({hp:o.maxhp,acted:false,x:-1,y:-1},o); 
 const UNIT_FACE={ guard:"assets/portraits/units/guard.png", archer:"assets/portraits/units/archer.png",
   foe_chief:"assets/portraits/units/foe_chief.png", foe_soldier:"assets/portraits/units/foe_soldier.png",
   foe_archer:"assets/portraits/units/foe_archer.png" };
+function armed(o){ const a=ARM[o.arm]||ARM.bu; return mkUnit(Object.assign({rng:a.rng,move:a.move},o)); }
 function buildUnits(cfg){
   const us=[]; let n=0;
   const mil=cfg.ourMilitary||40;
   const gens=(cfg.generals||[]).slice(0,4);
-  // 主将（武将）—— 头像用各将真立绘
-  let leaderId=null, bestMil=-1;
+  // 武将 —— 骑兵·头像用各将真立绘
+  let leaderId=null, bestMil=-1, emperorId=null;
   gens.forEach(g=>{
-    const u=mkUnit({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"将",face:g.portrait||"",
-      maxhp:Math.round(58+g.mil*0.6+mil*0.2), atk:Math.round(11+g.mil*0.5+mil*0.1), rng:1, move:3});
+    const u=armed({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"将",arm:"qi",face:g.portrait||"",
+      maxhp:Math.round(58+g.mil*0.6+mil*0.2), atk:Math.round(11+g.mil*0.5+mil*0.1)});
     if(g.mil>bestMil){ bestMil=g.mil; leaderId=u.id; }
     us.push(u);
   });
-  // 御驾亲征：陛下作为强力单位（头像用帝王按龄立绘）
+  // 御驾亲征：陛下·骑兵（头像用帝王按龄立绘）。亲征则陛下即主将。
   if(cfg.emperor && cfg.withEmperor){
     const e=cfg.emperor;
-    us.push(mkUnit({id:"u"+(n++),side:"our",name:e.name+"(亲征)",kind:"帝",icon:"君",isEmperor:true,
+    const u=armed({id:"u"+(n++),side:"our",name:e.name+"(亲征)",kind:"帝",icon:"君",arm:"qi",isEmperor:true,
       face:(typeof emperorFace!=="undefined"?emperorFace(e.age):""),
-      maxhp:Math.round(70+e.martial*0.7+mil*0.2), atk:Math.round(14+e.martial*0.6+mil*0.1), rng:1, move:3}));
+      maxhp:Math.round(70+e.martial*0.7+mil*0.2), atk:Math.round(14+e.martial*0.6+mil*0.1)});
+    emperorId=u.id; us.push(u);
   }
-  // 禁军步卒（由国家兵力派生，凑足阵容）
+  // 禁军 —— 步兵
   const footN = us.length<3?2:1;
-  for(let k=0;k<footN;k++) us.push(mkUnit({id:"u"+(n++),side:"our",name:"禁军"+(k+1),kind:"卒",icon:"丨",face:UNIT_FACE.guard,
-    maxhp:Math.round(42+mil*0.4), atk:Math.round(8+mil*0.22), rng:1, move:3}));
-  // 弓手（射程2）
-  us.push(mkUnit({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"弓",face:UNIT_FACE.archer,
-    maxhp:Math.round(34+mil*0.25), atk:Math.round(10+mil*0.2), rng:2, move:2}));
-  if(leaderId){ const L=us.find(u=>u.id===leaderId); if(L){ L.isLeader=true; L.icon="帅"; } }
+  for(let k=0;k<footN;k++) us.push(armed({id:"u"+(n++),side:"our",name:"禁军"+(k+1),kind:"卒",icon:"丨",arm:"bu",face:UNIT_FACE.guard,
+    maxhp:Math.round(42+mil*0.4), atk:Math.round(8+mil*0.22)}));
+  // 神射营 —— 弓兵
+  us.push(armed({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"弓",arm:"gong",face:UNIT_FACE.archer,
+    maxhp:Math.round(34+mil*0.25), atk:Math.round(10+mil*0.2)}));
+  // 主将：御驾亲征→陛下；否则最善战之将。主将被斩即败（擒贼擒王）。
+  const ourLeadId = emperorId || leaderId;
+  if(ourLeadId){ const L=us.find(u=>u.id===ourLeadId); if(L){ L.isLeader=true; if(!L.isEmperor) L.icon="帅"; } }
 
-  // 敌军（头像：王=酋首 · 弓手=番弓 · 余=番兵）
+  // 敌军（酋首=骑兵主将 · 番弓=弓兵 · 余=步兵）
   const ep=cfg.enemyPow||55, foeN=Math.max(3,Math.min(5,3+Math.floor(ep/28)));
   for(let k=0;k<foeN;k++){
     const lead=k===0, foeArcher=(k===foeN-1);
-    us.push(mkUnit({id:"f"+(n++),side:"foe",name:lead?(cfg.enemy+"·王"):(cfg.enemy+"兵"+k),
+    us.push(armed({id:"f"+(n++),side:"foe",name:lead?(cfg.enemy+"·王"):(cfg.enemy+"兵"+k),
       kind:lead?"酋":"番",icon:lead?"酋":"敌",isLeader:lead,
+      arm:lead?"qi":(foeArcher?"gong":"bu"),
       face:lead?UNIT_FACE.foe_chief:(foeArcher?UNIT_FACE.foe_archer:UNIT_FACE.foe_soldier),
       maxhp:Math.round((lead?70:46)+ep*0.5*rnd(0.85,1.1)),
-      atk:Math.round((lead?14:9)+ep*0.18*rnd(0.85,1.1)), rng:foeArcher?2:1, move:3}));
+      atk:Math.round((lead?14:9)+ep*0.18*rnd(0.85,1.1))}));
   }
   return us;
 }
@@ -118,15 +132,17 @@ function attackTargets(u,fromX,fromY){
 /* ---------- 战斗结算 ---------- */
 function strike(att,def){
   const dt=terrainAt(def.x,def.y);
-  let dmg=Math.max(3,Math.round(att.atk*rnd(0.82,1.18)*(1-dt.def)));
+  const adv=counters(att.arm,def.arm);                       // 兵种克制
+  let dmg=Math.max(3,Math.round(att.atk*rnd(0.82,1.18)*(1-dt.def)*(adv?COUNTER_MUL:1)));
   def.hp=Math.max(0,def.hp-dmg);
-  B.log.unshift(`${att.icon}${att.name} 击 ${def.icon}${def.name}，伤 ${dmg}${dt.def?`（${dt.name}减免）`:""}${def.hp<=0?" — 阵亡！":`（余${def.hp}）`}`);
+  B.log.unshift(`${att.name} 击 ${def.name}，伤 ${dmg}${adv?`（${ARM[att.arm].name}克${ARM[def.arm].name}·克制！）`:""}${dt.def?`（${dt.name}减免）`:""}${def.hp<=0?" — 阵亡！":`（余${def.hp}）`}`);
   if(typeof SFX!=="undefined"&&SFX.deal) SFX.deal();
-  // 反击：守方存活且攻方在其射程内
+  // 反击：守方存活且攻方在其射程内（亦计兵种克制）
   if(def.hp>0 && (Math.abs(att.x-def.x)+Math.abs(att.y-def.y))<=def.rng){
-    let cd=Math.max(2,Math.round(def.atk*0.4*rnd(0.8,1.2)));
+    const cadv=counters(def.arm,att.arm);
+    let cd=Math.max(2,Math.round(def.atk*0.4*rnd(0.8,1.2)*(cadv?COUNTER_MUL:1)));
     att.hp=Math.max(0,att.hp-cd);
-    B.log.unshift(`　↳ ${def.name} 反击，伤 ${cd}${att.hp<=0?" — "+att.name+"阵亡！":""}`);
+    B.log.unshift(`　↳ ${def.name} 反击，伤 ${cd}${cadv?"（克制！）":""}${att.hp<=0?" — "+att.name+"阵亡！":""}`);
   }
 }
 
@@ -198,6 +214,10 @@ function enemyTurn(){
 
 function checkEnd(){
   const our=aliveOf("our"), foe=aliveOf("foe");
+  // 擒贼擒王：任一方主将首级被取，该方即败（不必尽歼）
+  const fL=leaderOf("foe"), oL=leaderOf("our");
+  if(fL && fL.hp<=0){ finish(true,"擒王"); return true; }
+  if(oL && oL.hp<=0){ finish(false,"主将殁"); return true; }
   if(foe.length===0){ finish(true); return true; }
   if(our.length===0){ finish(false); return true; }
   return false;
@@ -206,9 +226,12 @@ function endByAttrition(){
   const oh=aliveOf("our").reduce((a,u)=>a+u.hp,0), fh=aliveOf("foe").reduce((a,u)=>a+u.hp,0);
   finish(oh>=fh);
 }
-function finish(win){
-  B.phase="over"; B.win=win;
-  B.log.unshift(win?"敌军溃灭，大获全胜！":"王师力竭，败退而还……");
+function finish(win,reason){
+  B.phase="over"; B.win=win; B.reason=reason||"";
+  const head = reason==="擒王" ? "斩其主将，敌军群龙无首、土崩瓦解！"
+    : reason==="主将殁" ? "主将殒于阵中，王师溃散……"
+    : (win?"敌军溃灭，大获全胜！":"王师力竭，败退而还……");
+  B.log.unshift(head);
   const mc=document.getElementById("modal-close"); if(mc) mc.style.display="";
   const ourMax=B.units.filter(u=>u.side==="our").reduce((a,u)=>a+u.maxhp,0)||1;
   const ourHpNow=aliveOf("our").reduce((a,u)=>a+u.hp,0);
@@ -252,23 +275,26 @@ function render(){
       // 头像作标识（缺图回退为类型字）；类型小角标 + HP 条
       const face=u.face?`<img class="wf-face" src="${u.face}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wf-glyph',textContent:'${u.icon}'}))">`
         :`<span class="wf-glyph">${u.icon}</span>`;
-      inner=`<div class="wf-unit ${side}${u.acted&&u.side==="our"&&B.phase==="battle"?" acted":""}${u.isLeader?" lead":""}" data-id="${u.id}" title="${u.name}">
-        ${face}<span class="wf-badge">${u.icon}</span>
+      const armG=(ARM[u.arm]||ARM.bu).glyph;     // 兵种角标：步/骑/弓
+      inner=`<div class="wf-unit ${side}${u.acted&&u.side==="our"&&B.phase==="battle"?" acted":""}${u.isLeader?" lead":""}" data-id="${u.id}" title="${u.name}·${(ARM[u.arm]||ARM.bu).name}">
+        ${face}<span class="wf-badge">${armG}</span>${u.isLeader?'<span class="wf-crown">主</span>':""}
         <span class="wf-hp"><u style="width:${hpPct}%"></u></span></div>`;
     }
     cells+=`<div class="${cls}" data-x="${x}" data-y="${y}">${inner}</div>`;
   }
   // 控制区
   let ctrl="";
+  const legend=`<div class="wf-legend">兵种克制：步克骑 · 骑克弓 · 弓克步（克制 ×1.5）｜射程 步/骑1·弓2 ｜机动 骑4·步3·弓2｜<b>斩敌主将（主）即胜</b></div>`;
   if(B.phase==="deploy"){
-    ctrl=`<div class="wf-tip">布阵：点己方单位再点左侧阵地格可换位（仅左二列）。摆好后开战。</div>
+    ctrl=`<div class="wf-tip">布阵：点己方单位再点左侧阵地格可换位（仅左二列）。摆好后开战。</div>${legend}
       <button class="btn btn-primary wf-go" id="wf-start">开 战</button>`;
   }else if(B.phase==="over"){
-    ctrl=`<div class="wf-result ${B.win?"win":"lose"}">${B.win?"凯　旋":"败　北"}</div>
+    ctrl=`<div class="wf-result ${B.win?"win":"lose"}">${B.win?"凯　旋":"败　北"}${B.reason?`<span class="wf-reason">· ${B.reason}</span>`:""}</div>
       <button class="btn btn-primary wf-go" id="wf-finish">${B.win?"献　捷　班　师":"收　拾　残　部"}</button>`;
   }else{
-    const sel=selU?`已选 <b>${selU.icon}${selU.name}</b>（${B.moved?"已移动·":""}点红格攻击／点空格移动）`:"点己方单位行动";
-    ctrl=`<div class="wf-tip">第 ${B.turn}/${MAX_TURN} 回合 · ${sel}</div>
+    const a=selU?(ARM[selU.arm]||ARM.bu):null;
+    const sel=selU?`已选 <b>${selU.name}</b>·<em>${a.name}</em>（射程${selU.rng}·机动${selU.move}${selU.isLeader?"·主将":""}）—— ${B.moved?"已移动·":""}点<b>红格</b>攻击／点<b>蓝格</b>移动`:"点己方单位行动（蓝格=可移动·红格=可攻击）";
+    ctrl=`<div class="wf-tip">第 ${B.turn}/${MAX_TURN} 回合 · ${sel}</div>${legend}
       <div class="wf-btns">${selU?`<button class="chip" id="wf-skip">原地待命</button>`:""}
         <button class="chip warn" id="wf-end">结束我方回合 ▶</button></div>`;
   }
