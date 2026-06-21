@@ -469,7 +469,64 @@ function showEnd(e,stat){
     <div><b>${stat.years}</b>享国（年）</div>
     <div><b>${stat.gen}</b>传位（代）</div>
     <div><b>${stat.score}</b>国运评分</div>`;
+  _lastEnd={e,stat};
+  // 「朝代实录图」按钮（注入 end-actions·避免重复）
+  const acts=$("screen-end").querySelector(".end-actions");
+  if(acts && !acts.querySelector("#btn-annals")){
+    const b=document.createElement("button"); b.id="btn-annals"; b.className="btn"; b.textContent="📜 朝代实录图";
+    b.onclick=exportAnnals; acts.insertBefore(b, acts.firstChild);
+  }
   show("end");
+}
+let _lastEnd=null;
+/* ---------- 史册分享：把一朝实录渲成可保存的长图 ---------- */
+function exportAnnals(){
+  const s=Game.s, le=_lastEnd||{e:{seal:"崩",title:"",temple:"",desc:""},stat:{years:s.nation.year,gen:s.gen,score:0}};
+  const e=le.e, st=le.stat, lines=(s.annals||[]).slice(-14);
+  const W=720, H=1180, c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d");
+  // 背景
+  const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1c130b"); g.addColorStop(.5,"#241810"); g.addColorStop(1,"#160f08");
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.strokeStyle="#9a7327"; x.lineWidth=3; x.strokeRect(18,18,W-36,H-36);
+  x.strokeStyle="#5a4323"; x.lineWidth=1; x.strokeRect(26,26,W-52,H-52);
+  const cx=W/2; x.textAlign="center";
+  // 标题
+  x.fillStyle="#f6dd96"; x.font="bold 40px 'Noto Serif SC',serif";
+  x.fillText(`${s.dynasty} · 朝代实录`, cx, 92);
+  x.fillStyle="#caa765"; x.font="18px 'Noto Serif SC',serif";
+  x.fillText(`${s.reign}朝 · 凡 ${st.years} 载 · 传 ${st.gen} 代`, cx, 126);
+  // 结局玺印
+  x.save(); x.translate(cx,210);
+  x.fillStyle=e.good?"#b5862f":"#7a2018"; x.strokeStyle="#f6dd96"; x.lineWidth=2;
+  x.beginPath(); const r=52; x.roundRect(-r,-r,2*r,2*r,12); x.fill(); x.stroke();
+  x.fillStyle="#fff"; x.font="bold 60px 'Noto Serif SC',serif"; x.textBaseline="middle";
+  x.fillText(e.seal||"崩",0,4); x.restore(); x.textBaseline="alphabetic";
+  x.fillStyle="#f2a861"; x.font="20px 'Noto Serif SC',serif"; x.fillText(e.temple||"",cx,300);
+  x.fillStyle="#f6dd96"; x.font="bold 30px 'Noto Serif SC',serif"; x.fillText(e.title||"",cx,338);
+  // 国运评分
+  x.fillStyle="#caa765"; x.font="16px 'Noto Serif SC',serif"; x.fillText(`国运评分 ${st.score}`, cx, 372);
+  // 分隔
+  x.strokeStyle="#5a4323"; x.beginPath(); x.moveTo(70,398); x.lineTo(W-70,398); x.stroke();
+  x.fillStyle="#f2a861"; x.font="bold 20px 'Noto Serif SC',serif"; x.fillText("· 本 朝 大 事 记 ·", cx, 430);
+  // 大事记（左对齐·自动换行截断）
+  x.textAlign="left"; x.font="16px 'Noto Serif SC',serif";
+  let y=466; const maxw=W-120;
+  for(const ln of lines){
+    let t=ln; if(x.measureText(t).width>maxw){ while(x.measureText(t+"…").width>maxw && t.length>4) t=t.slice(0,-1); t+="…"; }
+    x.fillStyle="#caa765"; x.fillText("•", 56, y);
+    x.fillStyle="#ece0cf"; x.fillText(t, 76, y); y+=44; if(y>H-110) break;
+  }
+  // 页脚
+  x.textAlign="center"; x.fillStyle="#8a7a5a"; x.font="14px 'Noto Serif SC',serif";
+  x.fillText("朕的江山 · 皇帝成长录", cx, H-58);
+  x.fillStyle="#6a5a3a"; x.font="12px monospace";
+  x.fillText("plum-221.github.io/emperor-simulator", cx, H-36);
+  // 导出
+  const url=c.toDataURL("image/jpeg",0.92);
+  openModal(`<h2>朝代实录图</h2><p class="panel-tip">右键（或长按）图片可保存分享；亦可点下方下载。</p>
+    <img src="${url}" style="width:100%;border-radius:10px;border:1px solid #8a6a3a;display:block;margin:6px 0">
+    <div class="ar-code"><a class="chip gold" href="${url}" download="${s.dynasty}_朝代实录.jpg">下载实录图</a><button class="chip" onclick="UI.closeModal()">返回</button></div>`);
 }
 
 /* ---------- 招贤抽卡结果 ---------- */
@@ -815,7 +872,7 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
-  openMarriage, openEnfeoff, openFactions, showExportCode, showImportCode, openGuide, maybeOnboard,
+  openMarriage, openEnfeoff, openFactions, showExportCode, showImportCode, openGuide, maybeOnboard, exportAnnals,
   promptNewborns, confirmNewbornName,
   openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};

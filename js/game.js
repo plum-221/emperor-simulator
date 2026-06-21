@@ -81,6 +81,7 @@ const api = {
       weaponLv:{},  // 武器强化等级 {[wid]:lv}
       allies:{},      // 和亲盟邦 {faction:剩余年数}，盟期内该番邦不犯边
       deeds:{tyranny:0,valor:0,benevolence:0,cunning:0,culture:0,indulgence:0},  // 帝王行止账：盖棺定人设·决多结局
+      annals:[],      // 朝代实录·里程碑脊梁（立国/传位/一统/结局·不随 log 截断），供「史册分享图」
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
@@ -89,6 +90,7 @@ const api = {
     if(typeof SpySys!=="undefined") SpySys.init(this.s);   // 密谍司 + 百官隐藏暗面
     if(typeof QuestSys!=="undefined") QuestSys.initState(this.s);
     this.logMsg(`${this.s.dynasty}立国，${this.s.reign}帝即位，时年${this.s.emperor.age}岁。`);
+    this.annal(`${this.s.dynasty}立国，${this.s.reign}帝即位`);
     UI.toGame();
     SFX.gong();
     this.beginTurn();
@@ -171,6 +173,7 @@ const api = {
   onUnify(){
     const s=this.s; if(s.over||s._unifyShown) return; s._unifyShown=true;
     if(UI.closePanel) UI.closePanel();
+    this.annal("六合归一，天下一统，万邦来朝");
     SFX.gong&&SFX.gong();
     this._bigChain=false;
     this.showCard({ id:"ev_unify", title:"六合归一 · 天下一统", role:"general", triumph:true,
@@ -1152,6 +1155,7 @@ const api = {
     if(s.map) s.map.regions.forEach(r=>{ delete r.fiefBy; delete r.fiefName; });// 旧藩王退场，藩地复归朝廷直辖
     s.children=[];
     this.logMsg(`${e.name}${causeTxt}，享年${e.age}。太子${heir.name}即位，是为第${s.gen}代。`);
+    this.annal(`${e.name}${causeTxt}（享年${e.age}），${heir.name}继位·第${s.gen}代`);
     SFX.gong();
   },
 
@@ -1169,6 +1173,7 @@ const api = {
   gameOver(id){
     const s=this.s; if(s.over) return; s.over=true;
     const e=ENDINGS[id]||ENDINGS.no_heir;
+    this.annal(`国祚终 · ${e.title}（${e.temple||""}）`);
     SFX.end();
     this.saveBest();
     UI.showEnd(e, {years:s.nation.year, gen:s.gen, score:this.score()});
@@ -1194,6 +1199,7 @@ const api = {
   clampAll(){ this.clampNation(); const e=this.s.emperor; for(const k in EMP_ATTRS) e[k]=R.clamp(e[k]); },
 
   logMsg(t){ const s=this.s; s.log.unshift(`${s.nation.year}年${s.nation.month}月 · ${t}`); if(s.log.length>60)s.log.pop(); },
+  annal(t){ const s=this.s; if(!s.annals)s.annals=[]; s.annals.push(`${s.nation.year}年 · ${t}`); if(s.annals.length>50)s.annals.shift(); },  // 朝代里程碑
 
   renderTurn(){ if(this._ff){ this.save(); return; } if(typeof QuestSys!=="undefined"&&this.s.quest) QuestSys.check(this.s); UI.renderHUD(); UI.renderEmperor(); if(this.s.pendingEvent)UI.showEvent(this.s.pendingEvent); else UI.showMonth(); UI.renderActions(); if(typeof MusicSys!=="undefined") MusicSys.setScene(this.s.nation.phase===2?"night":"court"); this.save(); },
 
