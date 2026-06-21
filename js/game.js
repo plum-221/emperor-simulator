@@ -14,7 +14,8 @@ const ENDINGS = {
   usurped:{seal:"篡",temple:"史册除名",title:"权臣篡位",desc:"你放任权臣坐大，终被一杯鸩酒送上西天。新朝建立，你的名字被从宗庙抹去。"},
   no_heir:{seal:"绝",temple:"谥曰·殇帝",title:"绝嗣而终",desc:"你驾崩之时膝下无子，皇位无人可继。诸王争立，外戚干政，盛极一时的王朝就此分崩离析。"},
   poison:{seal:"丹",temple:"谥曰·惑帝",title:"丹毒攻心",desc:"你痴迷长生、日服金丹，重金属之毒终于发作。你在幻觉中“飞升”，留下无尽遗恨。"},
-  sage:{seal:"圣",temple:"庙号·圣祖",title:"千古一帝",desc:"你在位数十载，文治武功，四海升平、万邦来朝。史官提笔，尊你为圣祖，庙食千秋，万世传颂。",good:true}
+  sage:{seal:"圣",temple:"庙号·圣祖",title:"千古一帝",desc:"你在位数十载，文治武功，四海升平、万邦来朝。史官提笔，尊你为圣祖，庙食千秋，万世传颂。",good:true},
+  unifier:{seal:"統",temple:"庙号·太祖 · 谥曰武皇帝",title:"混一寰宇 · 一统天下",desc:"你亲提六师，扫平列国群雄，削尽割据。普天之下莫非王土，率土之滨莫非王臣。封禅泰山，受万邦朝贺；车同轨、书同文，开万世一系之基业。你的武功，足以照耀千古。",good:true,cg:"end_unify"}
 };
 
 let G;  // 指向自身，供事件 do() 使用
@@ -40,6 +41,12 @@ const api = {
 
   newGame(dynasty,name,reign){
     const M=this.manifest;
+    // 清理上一局可能残留的弹窗 / 沙盘战棋 / 攻略对话（极端：战中或剧情中开新局）
+    if(typeof UI!=="undefined" && UI.closeModal) UI.closeModal();
+    if(typeof document!=="undefined"){
+      const _mc=document.getElementById("modal-content"); if(_mc) _mc.innerHTML="";   // 清掉残留战棋/弹窗内容
+      const _vn=document.getElementById("vn"); if(_vn) _vn.remove();
+    }
     // 固定班底：开局仅少数核心重臣在朝（澹台衡/欧阳彻·赫连勃/独孤信/长孙晟），
     // 其余固定人物靠招贤/事件/条件从名册逐个登场（不再随机生成路人）。
     const roster = startingCast();
@@ -147,6 +154,23 @@ const api = {
   },
 
   showCard(card){ if(this._bigChain && card.big===undefined) card.big=true; this.s.pendingEvent=card; },
+
+  /* ---------- 天下一统 · 终极大结局 ----------
+     由 map.js capture() 在「占尽全部州郡」时唤起。给玩家功成名就的高光时刻：
+     可封禅泰山落幕（专属 unifier 结局），亦可垂拱而治、继续经营。 */
+  onUnify(){
+    const s=this.s; if(s.over||s._unifyShown) return; s._unifyShown=true;
+    if(UI.closePanel) UI.closePanel();
+    SFX.gong&&SFX.gong();
+    this._bigChain=false;
+    this.showCard({ id:"ev_unify", title:"六合归一 · 天下一统", role:"general", triumph:true,
+      text:"自即位以来，亲征列国、削平群雄，如今最后一座坚城已悬王旗。普天之下，莫非王土；率土之滨，莫非王臣。万邦遣使来朝，山呼万岁震彻云霄——你已是这片土地唯一的主宰。",
+      choices:[
+        {text:"封禅泰山，受万邦朝贺（功成名就 · 落幕）", do:G=>G.gameOver("unifier")},
+        {text:"江山既定，垂拱而治（继续经营天下）", do:G=>{ G.toast("天下既定，励精图治，自当垂范青史。"); }}
+      ]});
+    this.afterEvent();
+  },
 
   /* ---------- 行动（每个时段一次）----------
      按天后行动频率剧增，故五维成长改为「边际递减」：属性越高、单次涨得越少，

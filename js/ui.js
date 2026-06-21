@@ -156,7 +156,7 @@ const SCENE_BY_ID={
   ev_trade:"market", ev_merchant:"market", ev_palace:"market", ev_lantern:"market", ev_horse:"market",
   ev_rebel_min:"rebellion", big_coup:"rebellion", big_rebellion:"rebellion", ev_assassin:"rebellion",
   ev_swordsman:"incognito", ev_poet:"incognito", ev_monk:"incognito", ev_painting:"incognito",
-  big_invasion:"war", big_heir:"court"
+  big_invasion:"war", big_heir:"court", ev_unify:"end_unify"
 };
 const SCENE_BY_CAT={ 灾害:"flood", 战争:"war", 军事:"war", 后宫:"harem", 祥瑞:"omen", 危机:"rebellion",
   大事件:"rebellion", 经济:"market", 节庆:"market", 民生:"incognito", 江湖:"incognito", 奇人:"incognito", 秘闻:"incognito" };
@@ -171,10 +171,11 @@ function showEvent(card){
   const text=typeof card.text==="function"?card.text(s):card.text;
   const title=typeof card.title==="function"?card.title(s):card.title;
   const choices=card.choices.filter(c=>!c.cond||c.cond(s));
-  const banner=card.big?`<div class="ev-banner">大 事 件 · 国 之 存 亡</div>`:"";
+  const banner=card.triumph?`<div class="ev-banner gold">天 下 一 统 · 万 邦 来 朝</div>`
+    :card.big?`<div class="ev-banner">大 事 件 · 国 之 存 亡</div>`:"";
   const illust=`<img class="ev-illust" src="assets/scenes/${sceneFor(card)}.jpg" alt="" onerror="this.remove()">`;
   $("event-area").innerHTML=`
-    <div class="ev-card${card.big?" big":""}">
+    <div class="ev-card${card.big?" big":""}${card.triumph?" triumph":""}">
       ${banner}
       ${illust}
       <div class="ev-top">
@@ -437,7 +438,7 @@ function announceSuccession(d,cb){
 
 /* ---------- 结局 ---------- */
 function showEnd(e,stat){
-  const cg=e.good?"end_sage":"end_fall";
+  const cg=e.cg||(e.good?"end_sage":"end_fall");
   const es=$("screen-end");
   if(es){ es.style.backgroundImage=`linear-gradient(rgba(10,4,2,.74),rgba(10,4,2,.88)), url('assets/scenes/${cg}.jpg')`;
     es.style.backgroundSize="cover"; es.style.backgroundPosition="center"; }

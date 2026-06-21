@@ -192,6 +192,10 @@ function attack(u,r){
   if(!isAttackTarget(u,r)){ Game.toast("不可攻击此地"); return; }
   if(!r.explored){ Game.toast("敌情不明，请先遣使探索"); return; }
   u.movesLeft=0; M().sel=r.id;
+  // 节奏分流：守备孱弱的小股残敌即时围攻拿下，免去为扫尾反复开战棋；
+  // 真正有防御纵深的城（守备厚 / 已筑城墙）才劳师亲临沙盘会战。
+  const trivial = defenseOf(r) <= 14 && !(r.build&&r.build.wall);
+  if(trivial){ quickAssault(u,r); return; }
   if(typeof WarfieldSys!=="undefined" && WarfieldSys.open){
     const s=Game.s, gens=s.ministers.filter(m=>m.kind==="martial").slice(0,3);
     UI.closePanel&&UI.closePanel();                       // 收起地图，露出战棋弹窗
@@ -238,7 +242,9 @@ function capture(r,u){
   if(s.flags) s.flags.warWon=true; if(Game.tally) Game.tally("battlewin");
   // 胜利判定
   if(counts().own>=counts().total){ s.nation.prestige=R.clamp(s.nation.prestige+20);
-    Game.toast("六合归一，天下一统！"); Game.logMsg("【天下一统】普天之下，莫非王土！"); if(s.flags)s.flags.unified=true; }
+    Game.logMsg("【天下一统】普天之下，莫非王土！"); if(s.flags)s.flags.unified=true;
+    // 让「克X！」捷报与金框闪光先行播完，再升起一统高光大结局
+    if(Game.onUnify) setTimeout(()=>Game.onUnify(),700); }
   UI.renderHUD&&UI.renderHUD(); Game.save&&Game.save();
 }
 
@@ -273,7 +279,7 @@ function develop(id){
 
 /* ---------- 敌国 AI（P4）：补备 / 吞并中立扩张 / 袭扰边境 ---------- */
 function enemyTurn(s){
-  const m=s.map; let fell=null;
+  const m=s.map; let fell=null; const warlords=[];
   m.regions.forEach(r=>{
     if(r.owner==="self"||r.owner==="neutral"||!r.faction) return;
     if(R.chance(45)) r.garrison=Math.min(70, r.garrison+R.i(1,2));    // 补备
@@ -298,8 +304,20 @@ function enemyTurn(s){
           fell=t.name; r.garrison=Math.round(r.garrison*0.7); }
       }
     }
+    // 列国争雄：天下并非只针对你——强藩亦吞并相邻异姓敌州（低频·让地图自然合纵连横）
+    else if(r.garrison>=28 && R.chance(16)){
+      const rivals=r.adj.map(region).filter(a=>a&&a.owner!=="self"&&a.owner!=="neutral"&&a.faction&&a.faction!==r.faction);
+      if(rivals.length){
+        const t=rivals.sort((a,b)=>a.garrison-b.garrison)[0];
+        t.garrison-=Math.round(r.garrison*0.45*R.rnd(0.8,1.2));
+        if(t.garrison<=0){ const loser=t.faction;
+          t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(12,18); r.garrison=Math.round(r.garrison*0.7);
+          warlords.push(`${r.faction} 攻灭 ${loser}，得 ${t.name}`); }
+      }
+    }
   });
   if(fell){ Game.logMsg(`【边警】${fell} 失陷于敌！`); }
+  if(warlords.length){ Game.logMsg(`【列国争雄】${warlords[0]}。`); }
 }
 
 /* ---------- 结束回合 ---------- */

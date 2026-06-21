@@ -287,6 +287,14 @@ b{color:var(--gold-br);font-weight:600;}
   color:#ffe9c2;padding:7px;border-radius:8px;
   background:linear-gradient(90deg,var(--red-dk),var(--red),var(--red-dk));border:1px solid var(--gold);
   text-shadow:0 1px 3px #000;}
+/* 天下一统·喜庆金框（与大事件红框区分） */
+.ev-banner.gold{color:#3a2400;background:linear-gradient(90deg,#b8862f,#ffe39a,#b8862f);
+  border:1px solid #fff3cf;text-shadow:0 1px 2px #ffe6b0;}
+.ev-card.triumph{border-color:var(--gold);
+  box-shadow:0 0 0 1px var(--gold-br),0 10px 34px rgba(217,182,95,.4),var(--shadow);
+  animation:goldpulse 1.8s ease-in-out infinite alternate;}
+@keyframes goldpulse{from{box-shadow:0 0 0 1px var(--gold),0 6px 22px rgba(217,182,95,.28),var(--shadow);}
+  to{box-shadow:0 0 0 1px var(--gold-br),0 12px 40px rgba(255,227,154,.6),var(--shadow);}}
 /* ============ 准4X 大地图 ============ */
 .map-summary{text-align:center;font-size:13px;color:var(--gold-br);padding:2px 0 6px;}
 .map-summary b{font-size:16px;}
@@ -335,6 +343,8 @@ b{color:var(--gold-br);font-weight:600;}
 .tt-node.lock{opacity:.5;cursor:not-allowed;}
 .worldmap{width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--gold-dk);
   box-shadow:var(--bevel);touch-action:manipulation;}
+/* 宽桌面：天下面板加宽，舆图不再偏小（移动端 width:100% 不受影响）*/
+.panel:has(.worldmap){max-width:880px;}
 .worldmap .rg:hover rect{filter:brightness(1.15);}
 .worldmap .rg:active{transform:scale(.98);transform-origin:center;}
 .region-card{margin-top:12px;border:1px solid var(--gold-dk);border-radius:11px;padding:11px 13px;
