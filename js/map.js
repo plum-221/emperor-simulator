@@ -209,6 +209,13 @@ function attack(u,r){
       enemyPow:defenseOf(r), onResolve:res=>resolveAssault(u.id, r.id, res) });
   } else { quickAssault(u,r); }
 }
+/* 一键攻城：指定我军出征指定敌州（actionCard 的「⚔ 出征」按钮直接调用·无需先手动选兵）*/
+function launchAttack(uid, rid){
+  const u=unit(uid), r=region(rid); if(!u||!r) return;
+  if(!isAttackTarget(u,r)){ Game.toast("不可攻击此地（需相邻且已探明）"); return; }
+  if(u.movesLeft<=0){ Game.toast("此军本回合已无行动力，下回合再战"); return; }
+  M().selU=uid; attack(u,r);
+}
 function resolveAssault(uid, rid, res){
   const r=region(rid), u=unit(uid); const s=Game.s;
   if(res && res.win){
@@ -424,9 +431,24 @@ function actionCard(s){
         +`</div>`;
     }
   }else if(bordersSelf(r)){
-    h+= !r.explored ? `<div class="post-row"><button class="chip" onclick="MapSys.explore('${r.id}')">遣使探索</button></div>`
-      : `<p class="panel-tip" style="margin:6px 0 0">选一支相邻我军，点此州（红色高亮）发起攻城。</p>`;
-  }else h+=`<p class="panel-tip" style="margin:6px 0 0">需先取下相邻州郡，方可用兵于此。</p>`;
+    if(!r.explored){
+      h+=`<p class="panel-tip" style="margin:6px 0 4px">敌情不明。先<b>遣使探索</b>查明守备，方可发兵。</p>
+        <div class="post-row"><button class="chip gold" onclick="MapSys.explore('${r.id}')">遣使探索</button></div>`;
+    }else{
+      // 找出可直接出征此敌州的我军：所在州与此州接壤、且本回合尚有行动力
+      const strikers=M().units.filter(u=>u.owner==="self"&&u.movesLeft>0&&r.adj.includes(u.rid));
+      if(strikers.length){
+        h+=`<p class="panel-tip" style="margin:6px 0 4px;color:#e0b15a"><b>⚔ 发起攻城</b>：点下方任一相邻我军即可出征（守备越厚越要亲临沙盘会战）。</p>
+          <div class="post-row">`+strikers.map(u=>{const t=UNIT_TYPES[u.type];
+            return `<button class="chip gold" onclick="MapSys.launchAttack('${u.id}','${r.id}')" title="${t.name} 出征攻取 ${r.name}">⚔ ${t.name}出征 <i>气${u.hp}·行${u.movesLeft}</i></button>`;}).join("")+`</div>`;
+      }else{
+        const idle=M().units.some(u=>u.owner==="self"&&r.adj.includes(u.rid));
+        h+= idle
+          ? `<p class="panel-tip" style="margin:6px 0 0;color:#d8a">相邻我军本回合行动力已尽——「结束回合」后下回合再来此州出征。</p>`
+          : `<p class="panel-tip" style="margin:6px 0 0;color:#d88">附近无我军。先选一支军队（点己方州里的军队），沿<b>蓝格</b>调到与此州<b>接壤</b>的我朝州郡，再来攻城。</p>`;
+      }
+    }
+  }else h+=`<p class="panel-tip" style="margin:6px 0 0">远在天边，鞭长莫及——需先取下与此相邻的州郡，方可用兵于此。</p>`;
   h+=`</div>`;
   return h;
 }
@@ -460,7 +482,7 @@ function renderBody(s){
 }
 
 return {initState, produce, growEnemies, selectRegion, selectUnit, explore, develop, endTurn, toggleBuild,
-  queueUnit, queueBuild, cancelQueue, startResearch, openTech, resolveAssault, quickAssault,
+  queueUnit, queueBuild, cancelQueue, startResearch, openTech, launchAttack, resolveAssault, quickAssault,
   renderBody, counts, REGIONS, UNIT_TYPES, TECH, BUILDINGS};
 })();
 if(typeof globalThis!=="undefined") globalThis.MapSys=MapSys;
