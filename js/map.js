@@ -294,7 +294,7 @@ function enemyTurn(s){
       const t=neu.sort((a,b)=>a.garrison-b.garrison)[0];
       t.garrison-=atk;
       if(t.garrison<=0){ t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(14,20); r.garrison=Math.round(r.garrison*0.72); }
-    }else if(mine.length && R.chance(32)){                            // 袭扰：攻你边州
+    }else if(mine.length && !(s.allies&&s.allies[r.faction]>0) && R.chance(32)){  // 袭扰：攻你边州（和亲盟邦不犯边）
       const t=mine.sort((a,b)=>defenseOf(a)-defenseOf(b))[0];
       const guards=unitsIn(t.id,"self");
       if(guards.length){ guards.forEach(u=>u.hp-=R.i(3,9)); m.units=m.units.filter(u=>u.hp>0);

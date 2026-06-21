@@ -72,6 +72,7 @@ const api = {
       talentPts:1, talents:[],                    // 帝王天赋点 / 已点天赋
       weapons:[],   // 已得武器 id 列表（武库）
       weaponLv:{},  // 武器强化等级 {[wid]:lv}
+      allies:{},      // 和亲盟邦 {faction:剩余年数}，盟期内该番邦不犯边
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
@@ -724,9 +725,90 @@ const api = {
     this.toast(`科举得士，${got} 位新贤入朝。`);
   },
 
-  marryPrincess(){
-    const s=this.s; const p=s.children.find(c=>c.gender==="女"&&c.age>=14&&!c.married);
-    if(p){ p.married=true; this.toast(`公主 ${p.name} 远嫁番邦，结两国之好。`);}
+  /* ===== 联姻外交：公主和亲结盟（后宫/皇嗣 → 天下4X 缝合）===== */
+  isAllied(f){ return !!(this.s.allies && this.s.allies[f]>0); },
+  // 仍敌对、尚未结盟的番邦
+  marriageTargets(){ const s=this.s; if(!s.map) return [];
+    const facs=[...new Set(s.map.regions.filter(r=>r.faction&&r.owner!=="self"&&r.owner!=="neutral").map(r=>r.faction))];
+    return facs.filter(f=>!this.isAllied(f)); },
+  marriageablePrincesses(){ return this.s.children.filter(c=>c.gender==="女"&&c.age>=14&&!c.married); },
+  openMarriage(){ if(UI.openMarriage) UI.openMarriage(); },
+  // 事件「和亲结盟」自动路径：随机择一公主+番邦结盟
+  marryPrincess(){ const ps=this.marriageablePrincesses(), fs=this.marriageTargets();
+    if(!ps.length) return;
+    if(!fs.length){ ps[0].married=true; this.s.nation.prestige=R.clamp(this.s.nation.prestige+3); this.toast(`公主 ${ps[0].name} 远嫁番邦，结两国之好。`); return; }
+    this.doMarriage(ps[0].id, R.pick(fs)); },
+  doMarriage(pid, faction){
+    const s=this.s; const p=s.children.find(c=>String(c.id)===String(pid));
+    if(!p||p.married||!faction) return;
+    if(!s.allies) s.allies={};
+    p.married=true; p.marriedTo=faction; s.allies[faction]=6;     // 盟约六年
+    const n=s.nation; n.treasury=R.clamp(n.treasury+8); n.food=R.clamp(n.food+6); n.prestige=R.clamp(n.prestige+5);
+    this.logMsg(`公主 ${p.name} 远嫁 ${faction}，结秦晋之好。${faction} 奉表称臣、献礼朝贡，六年内不复犯边。`);
+    this.toast(`和亲 ${faction}！边境六年安宁，国库丰盈。`);
+    if(this.tally) this.tally("marry");
+    if(UI.closeModal)UI.closeModal(); if(UI.renderPanel)UI.renderPanel("heir"); if(UI.renderHUD)UI.renderHUD();
+  },
+
+  /* ===== 皇子分封就藩（皇嗣 → 天下4X 缝合）===== */
+  enfeoffablePrinces(){ return this.s.children.filter(c=>c.gender==="男"&&c.age>=15&&!c.isHeir&&!c.fiefRid); },
+  enfeoffableRegions(){ const s=this.s; return s.map?s.map.regions.filter(r=>r.owner==="self"&&!r.cap&&!r.fiefBy):[]; },
+  openEnfeoff(){ if(UI.openEnfeoff) UI.openEnfeoff(); },
+  doEnfeoff(pid, rid){
+    const s=this.s; const p=s.children.find(c=>String(c.id)===String(pid));
+    const r=s.map&&s.map.regions.find(x=>x.id===rid);
+    if(!p||!r||r.owner!=="self"||r.cap||r.fiefBy||p.fiefRid) return;
+    p.fiefRid=rid; p.fiefYears=0; r.fiefBy=p.id; r.fiefName=p.name;
+    r.garrison=Math.min(70,(r.garrison|0)+Math.round(8+(p.martial||40)*0.15));   // 藩王戍边→守备骤增
+    this.logMsg(`封皇子 ${p.name} 为藩王，就藩 ${r.name}。藩镇拱卫，守备大增。`);
+    this.toast(`${p.name} 就藩 ${r.name}，固守一方！`);
+    if(this.tally) this.tally("enfeoff");
+    if(UI.closeModal)UI.closeModal(); if(UI.renderPanel)UI.renderPanel("heir");
+  },
+  recallPrince(pid){
+    const s=this.s; const p=s.children.find(c=>String(c.id)===String(pid)); if(!p||!p.fiefRid)return;
+    const r=s.map&&s.map.regions.find(x=>x.id===p.fiefRid); if(r){ delete r.fiefBy; delete r.fiefName; }
+    delete p.fiefRid; delete p.fiefYears;
+    this.toast(`召 ${p.name} 还朝，撤藩入觐。`); if(UI.renderPanel)UI.renderPanel("heir");
+  },
+  // 每年：藩王经营守备 + 藩贡 + 拥兵自重之险（藩王之乱）
+  fiefYearly(){
+    const s=this.s; if(!s.map) return; const rebels=[];
+    s.children.filter(c=>c.fiefRid).forEach(c=>{
+      const r=s.map.regions.find(x=>x.id===c.fiefRid);
+      if(!r||r.owner!=="self"){ delete c.fiefRid; delete c.fiefYears; return; }   // 藩地已失守
+      c.fiefYears=(c.fiefYears||0)+1;
+      r.garrison=Math.min(70,(r.garrison|0)+R.i(1,3));                            // 藩王经营·守备渐厚
+      s.nation.treasury=R.clamp(s.nation.treasury+1);                            // 藩贡入库
+      const risk=Math.min(28, c.fiefYears*3 + Math.max(0,(c.martial||40)-60)*0.4);  // 年久兵厚→渐生异心
+      if(R.chance(risk)){
+        r.owner="neutral"; r.faction=null; r.garrison=Math.max(28,(r.garrison|0)+10);
+        delete r.fiefBy; delete r.fiefName;
+        s.nation.prestige=R.clamp(s.nation.prestige-8);
+        this.logMsg(`【藩王之乱】皇子 ${c.name} 拥兵自重，据 ${r.name} 自立，脱离朝廷！`);
+        this.toast(`藩王 ${c.name} 叛！${r.name} 割据自立。`); SFX.bad&&SFX.bad();
+        rebels.push(c);
+      }
+    });
+    if(rebels.length) s.children=s.children.filter(c=>!rebels.includes(c));        // 叛王退出继承序列
+  },
+
+  /* ===== 外戚干政（后宫位分 → 朝堂权势·缝合密谍司隐患）===== */
+  // 妃位达「妃」(rank≥4)→抬举一名娘家亲眷为外戚，列于朝班（复用既有大臣对象，自然流入密谍司/问罪）
+  syncWaiqi(){
+    const s=this.s;
+    s.consorts.filter(c=>c.rank>=4 && !c.kinId).forEach(c=>{
+      // 优先既有外戚角色(皇甫缙 c_kin)，否则择一无要职的在朝文官
+      let kin=s.ministers.find(m=>m.castId==="c_kin"&&!m.waiqi)
+            || s.ministers.find(m=>m.kind==="civil"&&!m.post&&!m.waiqi)
+            || s.ministers.find(m=>m.kind==="civil"&&!m.waiqi);
+      if(!kin) return;
+      kin.waiqi=true; kin.ofConsort=c.tplId; c.kinId=kin.id;
+      kin.loyalty=R.clamp((kin.loyalty||50)+8);                  // 椒房之亲·恩荣加身
+      kin.ambition=R.clamp((kin.ambition||40)+10);              // 然外戚易骄·野心渐长(隐患)
+      this.logMsg(`${RANKS[c.rank]}${c.name} 位分尊崇，娘家 ${kin.name} 蒙恩擢为外戚，骤贵于朝。`);
+      this.toast(`外戚 ${kin.name} 因 ${c.name} 得宠而骤贵。`);
+    });
   },
 
   /* ---------- 微服探险（roguelike·一次抽 3 桩随机遭遇连环抉择）---------- */
@@ -932,6 +1014,13 @@ const api = {
       c.favor=R.clamp(c.favor-1);
       if(c.pregnant!=null){ c.pregnant++; if(c.pregnant>=10){ this.birth(c); c.pregnant=null; } }
     });
+    // 外戚干政：宠妃位分→娘家骤贵；外戚理财输送国库，然专权则朝臣离心
+    this.syncWaiqi();
+    const waiqi=s.ministers.filter(m=>m.waiqi);
+    if(waiqi.length){
+      n.treasury=R.clamp(n.treasury + waiqi.length*0.6);                       // 外戚恩荫·输送内帑
+      if(waiqi.some(m=>m.ambition>65)){ s.ministers.forEach(m=>{ if(!m.waiqi) m.loyalty=R.clamp(m.loyalty-1); }); }  // 外戚专权→清流离心
+    }
     this.applyConsortTraits();   // 入宫妃子的被动特质
     this.applyBonds();           // 阵容羁绊（含兵器谱套装）被动加成
     // 帝王健康随龄消耗（按月）
@@ -946,6 +1035,8 @@ const api = {
     e.age++; s.peakAge=Math.max(s.peakAge,e.age);
     s.talentPts=(s.talentPts||0)+1; this.logMsg(`又是一年，帝王心智渐熟，得天赋点 +1。`);
     s.children.forEach(c=>{ c.age++; this.growChild(c); });
+    this.fiefYearly();                                            // 藩王经营/藩贡/藩王之乱
+    if(s.allies) for(const f in s.allies){ if(--s.allies[f]<=0){ delete s.allies[f]; this.logMsg(`与 ${f} 的盟约期满，边衅复萌，番邦再启觊觎之心。`); } }   // 和亲盟约逐年递减
     s.ministers.forEach(m=>{ m.age++; if(m.age>72 && R.chance(20)){ this.retire(m); } });
     if(s.flags.pills>=5 && R.chance(s.flags.pills*4)){ this.emperorDies("poison"); return; }
     const longev=this.hasTalent("t_longevity")?0.55:1;   // 天赋·颐养天和：天年风险大减
@@ -996,6 +1087,8 @@ const api = {
       health:70, int:heir.int, charm:heir.charm, martial:heir.martial, politics:heir.politics, exp:0};
     // 新君登基：后宫一清（新朝重新攻略），旧皇子退场，老臣部分留任
     s.consorts=[]; s.romance={};
+    s.ministers.forEach(m=>{ delete m.waiqi; delete m.ofConsort; });           // 外戚随旧宫散去
+    if(s.map) s.map.regions.forEach(r=>{ delete r.fiefBy; delete r.fiefName; });// 旧藩王退场，藩地复归朝廷直辖
     s.children=[];
     this.logMsg(`${e.name}${causeTxt}，享年${e.age}。太子${heir.name}即位，是为第${s.gen}代。`);
     SFX.gong();

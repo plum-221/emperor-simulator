@@ -305,7 +305,7 @@ function renderPanel(name){
       return `<div class="m-card r${rar.r||1}" style="border-color:${rar.color};box-shadow:0 0 0 1px ${rar.color}${(rar.r||1)>=4?`,0 0 12px ${rar.glow}`:""}" ${selecting?`onclick="Game.audienceMinister('${m.id}')"`:""}>
         ${img(m.portrait,"m-face")}
         <div class="m-info">
-          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${rar.color}" title="${rar.name}">${rar.star}</span><span class="m-post">${pos}</span>${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">详</button></div>
+          <div class="m-head"><b>${m.name}</b>${m.title?`<span class="m-title">${m.title}</span>`:""}<span class="m-tier" style="color:${rar.color}" title="${rar.name}">${rar.star}</span><span class="m-post">${pos}</span>${m.waiqi?`<span class="m-waiqi" title="外戚：因宫中亲眷得宠而骤贵，权重而野心易长">外戚</span>`:""}${wpTag}<span class="m-pers">${m.personality}</span><button class="m-view" onclick="event.stopPropagation();UI.openCharacter('${m.id}')" title="查看身世·关系">详</button></div>
           <div class="m-line">${m.kind==="martial"?"武将":"文官"} · 文才 ${m.civ} · 武略 ${m.mil} <span class="m-lv">Lv${m.level||1}</span><span class="m-exp">${m.exp||0}/${(m.level||1)*10}</span></div>
           <div class="m-line">忠诚 ${bar(m.loyalty,"#5aa06a")} ${Math.round(m.loyalty)}　野心 ${bar(m.ambition,"#c0563a")} ${Math.round(m.ambition)}</div>
           ${postBtns}
@@ -377,6 +377,12 @@ function renderPanel(name){
       const heir=c.isHeir?`<span class="m-post heir">太子</span>`:"";
       const st=childStage(c.age);
       const setBtn=(c.gender==="男"&&!c.isHeir)?`<button class="chip" onclick="Game.setHeir('${c.name}')">立为太子</button>`:"";
+      // 公主和亲 / 皇子分封（后宫皇嗣 → 外交·天下4X 缝合）
+      const fiefR=c.fiefRid&&s.map?(s.map.regions.find(r=>r.id===c.fiefRid)||{}).name:"";
+      const marriedTag=c.married?`<span class="m-post" style="color:#d9a;">已和亲${c.marriedTo?"·"+c.marriedTo:""}</span>`:"";
+      const fiefTag=c.fiefRid?`<span class="m-post" style="color:#8fc99a;">藩·${fiefR}</span>`:"";
+      const dipBtn=(c.gender==="女"&&c.age>=14&&!c.married)?`<button class="chip dip" onclick="Game.openMarriage('${c.id}')">和亲结盟</button>`
+        :(c.gender==="男"&&c.age>=15&&!c.isHeir)?(c.fiefRid?`<button class="chip" onclick="Game.recallPrince('${c.id}')">召还撤藩</button>`:`<button class="chip dip" onclick="Game.openEnfeoff('${c.id}')">分封就藩</button>`):"";
       // 已成年(弱冠)不再教养
       const edu=st.key!=="youth"?`
         <button class="chip" onclick="Game.educateChild('${c.id}','int')">习文</button>
@@ -386,13 +392,15 @@ function renderPanel(name){
       return `<div class="m-card child">
         ${img("assets/portraits/children/"+st.key+".png","child-face")}
         <div class="m-info">
-          <div class="m-head"><b>${c.name}</b><span class="m-post">皇${c.gender==="男"?"子":"女"} · ${c.age}岁 · ${st.name}</span>${heir}</div>
+          <div class="m-head"><b>${c.name}</b><span class="m-post">皇${c.gender==="男"?"子":"女"} · ${c.age}岁 · ${st.name}</span>${heir}${marriedTag}${fiefTag}</div>
           <div class="m-line">母 ${c.mother}</div>
           <div class="m-line">智${c.int} 魅${c.charm} 武${c.martial} 政${c.politics}</div>
-          <div class="post-row">${edu}${setBtn}</div>
+          <div class="post-row">${edu}${setBtn}${dipBtn}</div>
         </div></div>`;
     }).join(""):`<p class="panel-tip">膝下尚无子嗣，临幸后宫以开枝散叶。</p>`;
-    h+=`<p class="panel-tip">※ 教养可消耗当前时段提升皇嗣某一维（边际递减）；弱冠成年后定型。帝王驾崩时由太子（或最年长皇子）继位，绝嗣则亡国。</p>`;
+    const allyList=s.allies?Object.keys(s.allies).filter(f=>s.allies[f]>0):[];
+    if(allyList.length) h+=`<p class="panel-tip" style="color:#d9a;">※ 当前和亲盟邦：${allyList.map(f=>`${f}（余${s.allies[f]}年）`).join("、")}——盟期内不犯边。</p>`;
+    h+=`<p class="panel-tip">※ 公主可<b>和亲结盟</b>(息边+朝贡)、皇子可<b>分封就藩</b>(守土·有拥兵自重之险)。教养消耗当前时段提升皇嗣某维；驾崩时由太子（或最年长皇子）继位，绝嗣则亡国。</p>`;
   }
   else if(name==="army"){
     const n=s.nation, e=s.emperor;
@@ -493,6 +501,27 @@ function showSelect(c){
 /* ---------- 通用弹窗 ---------- */
 function openModal(html){ $("modal-content").innerHTML=html; $("modal").classList.add("open"); }
 function closeModal(){ $("modal").classList.remove("open"); }
+
+/* ---------- 和亲结盟 选择弹窗 ---------- */
+function openMarriage(pid){
+  const G=Game, ps=G.marriageablePrincesses(), fs=G.marriageTargets();
+  if(!ps.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">尚无适龄待嫁的公主（需年满 14 岁）。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!fs.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">四方番邦或已臣服、或已结盟，眼下无可和亲之国。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  let list=pid?ps.filter(p=>String(p.id)===String(pid)):ps; if(!list.length) list=ps;
+  const rows=list.map(p=>`<div class="dip-row"><div class="dip-who"><b>${p.name}</b> 公主 · ${p.age}岁 · 魅${p.charm}</div>
+    <div class="dip-opts">${fs.map(f=>`<button class="chip dip" onclick="Game.doMarriage('${p.id}','${f}')">嫁 ${f}</button>`).join("")}</div></div>`).join("");
+  openModal(`<h2>和亲结盟 · 秦晋之好</h2><p class="panel-tip">择一公主远嫁番邦，缔结<b>六年盟约</b>：该国不复犯边，并奉表献礼朝贡（国库 +8·粮 +6·威望 +5）。盟期满后须重修旧好，否则边衅复萌。</p>${rows}<button class="btn" onclick="UI.closeModal()">从长计议</button>`);
+}
+/* ---------- 分封就藩 选择弹窗 ---------- */
+function openEnfeoff(pid){
+  const G=Game, ps=G.enfeoffablePrinces(), rs=G.enfeoffableRegions();
+  if(!ps.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可分封的皇子（需年满 15 岁、非太子、未就藩）。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!rs.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可供分封的州郡（需我朝直辖、非都城、未封藩）。先往「天下」开疆拓土。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  let list=pid?ps.filter(p=>String(p.id)===String(pid)):ps; if(!list.length) list=ps;
+  const rows=list.map(p=>`<div class="dip-row"><div class="dip-who"><b>${p.name}</b> 皇子 · ${p.age}岁 · 武${p.martial} 政${p.politics}</div>
+    <div class="dip-opts">${rs.map(r=>`<button class="chip dip" onclick="Game.doEnfeoff('${p.id}','${r.id}')">就藩 ${r.name}</button>`).join("")}</div></div>`).join("");
+  openModal(`<h2>分封就藩 · 藩屏王室</h2><p class="panel-tip">封皇子为藩王、镇守一州：藩镇拱卫，守备骤增、岁有藩贡。然藩王年久兵厚易生异心，恐有<b>拥兵自重</b>之患——封建乃双刃之剑。</p>${rows}<button class="btn" onclick="UI.closeModal()">从长计议</button>`);
+}
 
 /* ---------- 标题 / 启动 ---------- */
 function showRecord(){
@@ -718,6 +747,7 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
+  openMarriage, openEnfeoff,
   promptNewborns, confirmNewbornName,
   openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};
