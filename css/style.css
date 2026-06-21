@@ -599,6 +599,27 @@ b{color:var(--gold-br);font-weight:600;}
 .wf-hp{position:absolute;left:0;right:0;bottom:0;z-index:2;display:block;width:100%;height:4px;background:rgba(0,0,0,.55);}
 .wf-hp>u{display:block;height:100%;background:#9be88a;}
 .u-foe .wf-hp>u{background:#f0a08a;}
+/* 储能条（HP 条上方）*/
+.wf-nrg{position:absolute;left:0;right:0;bottom:4px;z-index:2;display:block;width:100%;height:3px;background:rgba(0,0,0,.5);}
+.wf-nrg>u{display:block;height:100%;background:#7fd0ff;}
+.wf-unit.ready{box-shadow:0 0 0 2px #9be3ff,0 0 9px rgba(127,208,255,.85);}
+.wf-unit.ready .wf-nrg>u{background:#bfe9ff;}
+/* 技能可选格高亮（紫）*/
+.wf-cell.wf-skillcell{outline:2px dashed #b98cf0;outline-offset:-2px;background-image:radial-gradient(rgba(185,140,240,.4),rgba(185,140,240,.12));}
+/* 攻击特效：飘动伤害/治疗数字 */
+.wf-fx{position:absolute;left:50%;top:30%;z-index:5;transform:translateX(-50%);pointer-events:none;
+  font-weight:800;font-size:15px;text-shadow:0 1px 3px #000,0 0 5px #000;animation:wfFloat .9s ease-out forwards;white-space:nowrap;}
+.wf-fx.hit{color:#ffd9c8;} .wf-fx.crit{color:#ffd24a;font-size:18px;}
+.wf-fx.heal{color:#9be88a;} .wf-fx.skill{color:#d6b3ff;font-size:13px;}
+@keyframes wfFloat{0%{opacity:0;transform:translate(-50%,6px) scale(.7);}25%{opacity:1;transform:translate(-50%,-2px) scale(1.1);}100%{opacity:0;transform:translate(-50%,-22px) scale(1);}}
+/* 选中单位属性卡 */
+.wf-stat{text-align:left;font-size:12px;color:var(--ink);line-height:1.5;}
+.wf-stat>b{font-size:13px;} .wf-stat em{font-style:normal;color:#a8741e;font-weight:700;}
+.wf-stat-row{display:block;font-size:11.5px;color:#5a4326;}
+.wf-stat-skill{display:block;font-size:11.5px;color:#7a4ea0;}
+.wf-act-hint{font-size:11.5px;color:var(--gold-br);margin-top:2px;}
+.chip.skill{border-color:#b98cf0;color:#dcc6ff;background:rgba(185,140,240,.14);}
+.chip.skill.on{background:rgba(185,140,240,.4);color:#fff;box-shadow:0 0 8px rgba(185,140,240,.6);}
 .wf-ctrl{text-align:center;margin:4px 0;}
 .wf-tip{font-size:12.5px;color:#6a4a2a;margin-bottom:6px;line-height:1.5;}
 .wf-btns{display:flex;gap:8px;justify-content:center;}
