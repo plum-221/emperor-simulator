@@ -254,6 +254,126 @@ function afterAction(){
   else render();
 }
 
+/* ---------- 敌军 AI 决策辅助 ---------- */
+function nearest(f,arr){ let b=arr[0],bd=1e9; arr.forEach(t=>{const d=manh(f,t);if(d<bd){bd=d;b=t;}}); return b; }
+// 去随机的伤害估算（取中值），供 AI 评估"打谁/能不能斩杀"
+function estDmg(att,def,mul){
+  const dt=terrainAt(def.x,def.y), red=Math.min(0.6,dt.def+defReduce(def)), adv=counters(att.arm,def.arm);
+  return Math.max(3,Math.round(att.atk*(mul||1)*(1-red)*(adv?COUNTER_MUL:1)));
+}
+// 一个我军目标 t 对敌单位 f 的"攻击价值"
+function targetValue(f,t,dmg){
+  let v=dmg;                                   // 基础=能造成的伤害
+  if(dmg>=t.hp)      v+=45;                     // 能一击斩杀 → 高优先
+  if(t.isLeader)     v+=38;                     // 我军主将 = 擒王机会（镜像玩家斩首战术）
+  if(t.arm==="yi")   v+=20;                     // 我军医疗 → 先断奶
+  v+=(1-t.hp/t.maxhp)*14;                       // 残血优先（集火）
+  if(counters(f.arm,t.arm)) v+=10;             // 克制目标更划算
+  if(counters(t.arm,f.arm)) v-=8;              // 会被对方克制反伤 → 略避
+  return v;
+}
+// (x,y) 处下回合可能挨到的我军总攻击力（近似：我军 move+rng 够得到即计），用于敌方避险
+function exposureAt(x,y,ignore){
+  let e=0;
+  B.units.forEach(o=>{ if(o.hp>0&&o.side==="our"&&o!==ignore){
+    if(Math.abs(o.x-x)+Math.abs(o.y-y) <= (o.move||3)+(o.rng||1)) e+=o.atk; } });
+  return e;
+}
+// 敌单位放技能（side 无关版·复用 strike(opt)，不走玩家 endUnit 流程）
+function foeCast(f,t){
+  const sk=ARM[f.arm].skill;
+  if(sk.key==="charge"){ strike(f,t,{skill:sk.name,mul:2.2,noCounter:true}); fx(f.x,f.y,sk.name,"skill"); }
+  else if(sk.key==="sweep"){ strike(f,t,{skill:sk.name,mul:1.2});
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const s=unitAt(t.x+dx,t.y+dy); if(s&&s.side!==f.side&&s.hp>0) strike(f,s,{skill:sk.name,mul:0.7,noCounter:true});});
+    fx(f.x,f.y,sk.name,"skill"); }
+  else if(sk.key==="rain"){ B.units.filter(s=>s.hp>0&&s.side!==f.side&&(Math.abs(s.x-t.x)+Math.abs(s.y-t.y))<=1).forEach(s=>strike(f,s,{skill:sk.name,mul:0.9,noCounter:true}));
+    fx(t.x,t.y,sk.name,"skill"); }
+  f.nrg=0;
+}
+// 全场扫描：选最优(站位,目标,是否用技能)。spots = 原地 + 所有可达格
+function bestPlanFor(f){
+  const spots=[{x:f.x,y:f.y}]; const reach=reachable(f);
+  for(const k in reach){ const[x,y]=k.split(",").map(Number); spots.push({x,y}); }
+  const canSkill=skillReady(f)&&f.arm!=="yi", sk=ARM[f.arm].skill;
+  const skMul=sk?(sk.key==="charge"?2.2:sk.key==="sweep"?1.2:sk.key==="rain"?0.9:1):1;
+  let best={score:-1e9};
+  for(const sp of spots){
+    const expo=exposureAt(sp.x,sp.y,f);
+    const inRange=B.units.filter(t=>t.hp>0&&t.side==="our"&&(Math.abs(t.x-sp.x)+Math.abs(t.y-sp.y))<=f.rng);
+    for(const t of inRange){
+      // 普通攻击
+      let v=targetValue(f,t,estDmg(f,t,1)) - expo*(f.isLeader?0.04:0.012);
+      if(v>best.score) best={score:v,x:sp.x,y:sp.y,tid:t.id,skill:false};
+      // 技能攻击（攒满气才考虑）
+      if(canSkill){
+        let sv=targetValue(f,t,estDmg(f,t,skMul)) - expo*(f.isLeader?0.04:0.012)
+             + (sk.key==="charge"?10:sk.key==="rain"?6:4);   // 技能略加权(斩杀/群伤/无视反击)
+        if(sv>best.score) best={score:sv,x:sp.x,y:sp.y,tid:t.id,skill:true};
+      }
+    }
+  }
+  return best.score>-1e9?best:null;
+}
+// 撤到暴露最低的可达格（残血主将自保用）
+function retreatFoe(f){
+  const reach=reachable(f); let best=null,bs=exposureAt(f.x,f.y,f);
+  for(const k in reach){ const[x,y]=k.split(",").map(Number); const e=exposureAt(x,y,f); if(e<bs){bs=e;best={x,y};} }
+  if(best){ f.x=best.x; f.y=best.y; B.log.unshift(`${f.name} 见势不利，引军后撤……`); }
+}
+// 无可攻目标：向战略目标推进（主将偏好我主将/医疗·并避险），到位则顺势出手
+function advanceFoe(f){
+  const ours=aliveOf("our"); if(!ours.length) return;
+  const tgt = f.isLeader ? (ours.find(o=>o.isLeader)||ours.find(o=>o.arm==="yi")||nearest(f,ours)) : nearest(f,ours);
+  const reach=reachable(f); let best=null,bs=1e9;
+  for(const k in reach){ const[x,y]=k.split(",").map(Number);
+    let score=(Math.abs(x-tgt.x)+Math.abs(y-tgt.y)) - ((Math.abs(x-tgt.x)+Math.abs(y-tgt.y))<=f.rng?5:0);
+    score += exposureAt(x,y,f)*(f.isLeader?0.03:0.006);     // 主将更避险，避免一头扎进包围
+    if(score<bs){ bs=score; best={x,y}; } }
+  if(f.isLeader && f.hp<f.maxhp*0.4){                       // 残血主将：只在不更暴露时才移动
+    if(best && exposureAt(best.x,best.y,f)<=exposureAt(f.x,f.y,f)){ f.x=best.x; f.y=best.y; }
+  } else if(best){ f.x=best.x; f.y=best.y; }
+  const t2=nearest(f,aliveOf("our"));
+  if(t2 && manh(f,t2)<=f.rng) strike(f,t2);                 // 走到后进了射程→打
+}
+// 攻击型敌单位的完整一步
+function foeCombatAct(f){
+  const plan=bestPlanFor(f);
+  if(plan){
+    const tgt=B.units.find(u=>u.id===plan.tid);
+    const willKill=estDmg(f,tgt,plan.skill?(ARM[f.arm].skill.key==="charge"?2.2:ARM[f.arm].skill.key==="sweep"?1.2:0.9):1)>=tgt.hp;
+    const risky=exposureAt(plan.x,plan.y,f) > f.hp*0.85;    // 落点预计挨打超自身八成五血
+    if(f.isLeader && f.hp<f.maxhp*0.4 && !willKill && risky){
+      retreatFoe(f);                                        // 残血主将不浪：能斩首才冒险，否则撤
+    }else{
+      if(f.x!==plan.x||f.y!==plan.y){ f.x=plan.x; f.y=plan.y; }
+      if(plan.skill) foeCast(f,tgt); else strike(f,tgt);
+    }
+  }else{ advanceFoe(f); }
+}
+// 敌方医疗兵：优先疗主将→最危者；满气且周围多伤→回春群疗；闲时随主将走位
+function foeMedicAct(f){
+  const wounded=B.units.filter(t=>t.hp>0&&t.side==="foe"&&t!==f&&t.hp<t.maxhp)
+    .sort((a,b)=>(b.isLeader-a.isLeader)||((a.hp/a.maxhp)-(b.hp/b.maxhp)));
+  if(!wounded.length){                                      // 无人受伤→护在主将身侧
+    const ld=leaderOf("foe");
+    if(ld && manh(f,ld)>1){ const reach=reachable(f); let best=null,bd=1e9;
+      for(const k in reach){const[x,y]=k.split(",").map(Number); const d=Math.abs(x-ld.x)+Math.abs(y-ld.y); if(d<bd){bd=d;best={x,y};}}
+      if(best){f.x=best.x;f.y=best.y;} }
+    return;
+  }
+  const near2=wounded.filter(t=>manh(f,t)<=2);
+  if(skillReady(f) && near2.length>=2){                     // 满气+周围两格内≥2伤者→回春群疗
+    near2.forEach(t=>heal(f,t)); fx(f.x,f.y,"回春","skill"); f.nrg=0; return;
+  }
+  const hurt=wounded[0];
+  if(manh(f,hurt)>f.rng){                                   // 移到能疗到的最近格
+    const reach=reachable(f); let best=null,bd=1e9;
+    for(const k in reach){const[x,y]=k.split(",").map(Number); const d=Math.abs(x-hurt.x)+Math.abs(y-hurt.y); if(d<bd){bd=d;best={x,y};}}
+    if(best){f.x=best.x;f.y=best.y;}
+  }
+  if(manh(f,hurt)<=f.rng) heal(f,hurt);
+}
+
 /* ---------- 敌军 AI ---------- */
 function enemyTurn(){
   B.phase="enemyAnim";
@@ -266,27 +386,9 @@ function enemyTurn(){
       B.phase="battle"; if(checkEnd()) return; render(); return;
     }
     const f=foes[i++]; if(f.hp<=0){ step(); return; }
-    // 敌方医疗兵：疗愈最伤的相邻同袍（不主动攻杀）
-    if(f.arm==="yi"){
-      const hurt=B.units.filter(t=>t.hp>0&&t.side==="foe"&&t!==f&&t.hp<t.maxhp).sort((a,b)=>(a.hp/a.maxhp)-(b.hp/b.maxhp))[0];
-      if(hurt){ const near=manh(f,hurt)<=f.rng; if(!near){ const reach=reachable(f),best=Object.keys(reach).map(k=>k.split(",").map(Number)).sort((a,b)=>(Math.abs(a[0]-hurt.x)+Math.abs(a[1]-hurt.y))-(Math.abs(b[0]-hurt.x)+Math.abs(b[1]-hurt.y)))[0]; if(best){f.x=best[0];f.y=best[1];} }
-        if(manh(f,hurt)<=f.rng) heal(f,hurt); }
-      if(checkEnd()) return; render(); setTimeout(step,420); return;
-    }
-    // 找最近我军
-    const targets=aliveOf("our"); if(!targets.length){ checkEnd(); return; }
-    let tgt=targets[0],bd=1e9; targets.forEach(t=>{const d=manh(f,t);if(d<bd){bd=d;tgt=t;}});
-    // 若已在射程→打；否则移动到「最靠近且能打到」的可达格
-    if(manh(f,tgt)<=f.rng){ strike(f,tgt); }
-    else{
-      const reach=reachable(f); let best=null,bs=1e9;
-      for(const k in reach){ const[x,y]=k.split(",").map(Number);
-        const d=Math.abs(x-tgt.x)+Math.abs(y-tgt.y);
-        const score=d - (d<=f.rng?5:0);   // 优先能进入射程的位置
-        if(score<bs){ bs=score; best={x,y}; } }
-      if(best){ f.x=best.x; f.y=best.y; }
-      if(manh(f,tgt)<=f.rng) strike(f,tgt);
-    }
+    if(!aliveOf("our").length){ checkEnd(); return; }
+    if(f.arm==="yi") foeMedicAct(f);      // 医疗兵：疗主将/群疗/护驾
+    else foeCombatAct(f);                 // 攻击型：择优站位+目标+技能，主将自保
     if(checkEnd()) return;
     render(); setTimeout(step,420);
   };
