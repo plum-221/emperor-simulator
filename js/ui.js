@@ -558,6 +558,28 @@ function showRecord(){
   $("btn-continue").style.display=localStorage.getItem("zjjs_save")?"":"none";
 }
 
+/* ---------- 新手引导（首通分步浮层·可在菜单重看）---------- */
+const GUIDE_STEPS=[
+  {t:"君临天下 · 欢迎",b:"你是开国之君。一回合＝一个月，玩法循环只有三步：<br><b>① 上朝</b>批一桩奏折（多选项，牵动国力与人心）<br><b>② 行动</b>择一而行（勤政／读书习武／临幸后宫／召见群臣／休养）<br><b>③ 下一回合</b>结算经济、忠诚、生育、年岁<br>顶部「下一时段／快进」推进时间，遇大事自动停。"},
+  {t:"顶栏 · 两套属性",b:"<b>国力六维</b>（国库／兵力／民心／粮草／疆土／威望）是江山家底——任一归零便有亡国之虞。<br><b>帝王五维</b>（健康／智力／魅力／武力／政治）靠「行动」养成，越高则理政、征战、攻略越强。治国是<b>收支平衡</b>的艺术，别让任何一维崩盘。"},
+  {t:"底部 · 五大舞台",b:"<b>朝堂</b>：满朝文武各有忠诚野心；任要职增益国力，可设<b>密谍司</b>查暗线、看<b>朝局势力图</b>（党争）。<br><b>后宫</b>：攻略嫔妃、诞育皇嗣。<br><b>皇嗣</b>：培养立太子；公主可<b>和亲</b>结盟、皇子可<b>分封</b>守边。<br><b>天下</b>：可点击大地图的回合制 4X——经营城池、研国策、点将出征<b>沙盘会战</b>。<br><b>大业</b>：任务／成就／图鉴／称号。"},
+  {t:"长线 · 世代与结局",b:"帝王会老、会驾崩。立了太子，江山便<b>世代相传</b>、新君续局；绝嗣则亡国。<br>一生如何，<b>盖棺定论</b>：勤政均衡→千古一帝，开疆→武皇，仁政→仁君，嗜杀→暴君……八种人设结局，看你怎么当这个皇帝。<br>亦可亲征扫平列国，成<b>一统天下</b>之大结局。"},
+  {t:"贴士",b:"· 看不清某词？多数按钮可<b>悬停看说明</b>。<br>· 怕丢档／换设备：菜单「存档」可<b>导出存档码</b>带走。<br>· 本引导可在<b>菜单 → 新手引导</b>随时重看。<br>祝陛下国祚绵长，青史留名！"},
+];
+function openGuide(step){
+  step=Math.max(0,Math.min(GUIDE_STEPS.length-1, step|0));
+  const g=GUIDE_STEPS[step], last=step===GUIDE_STEPS.length-1;
+  const dots=GUIDE_STEPS.map((_,i)=>`<i class="g-dot${i===step?" on":""}"></i>`).join("");
+  try{ localStorage.setItem("zjjs_onboarded","1"); }catch(e){}
+  openModal(`<div class="guide"><div class="g-step">引导 ${step+1}/${GUIDE_STEPS.length}</div>
+    <h2>${g.t}</h2><p class="g-body">${g.b}</p>
+    <div class="g-dots">${dots}</div>
+    <div class="g-btns">
+      ${step>0?`<button class="chip" onclick="UI.openGuide(${step-1})">上一步</button>`:`<button class="chip" onclick="UI.closeModal()">跳过</button>`}
+      ${last?`<button class="btn btn-primary" onclick="UI.closeModal()">开始治国 ▶</button>`:`<button class="btn btn-primary" onclick="UI.openGuide(${step+1})">下一步 ▶</button>`}
+    </div></div>`);
+}
+function maybeOnboard(){ try{ if(!localStorage.getItem("zjjs_onboarded")) setTimeout(()=>openGuide(0),600); }catch(e){} }
 function openHelp(){
   openModal(`<h2>玩法说明</h2>
   <p>你是开国之君。每一回合（月）先<b>上朝</b>处理一桩朝政奏折，再择一项<b>行动</b>（勤政／读书习武／临幸后宫／召见群臣／休养），然后<b>下一回合</b>结算。</p>
@@ -615,6 +637,7 @@ function openGameMenu(){
     <button class="btn btn-primary" onclick="UI.openArchive('save')">存档 / 读档</button>
     <button class="btn" onclick="UI.toggleMusic(this)">背景音乐：${mOn?"开":"关"}</button>
     <button class="btn" onclick="UI.toggleSfx(this)">音效：${sOn?"开":"关"}</button>
+    <button class="btn" onclick="UI.openGuide(0)">新手引导</button>
     <button class="btn" onclick="UI.openHelp()">玩法说明</button>
     <button class="btn" onclick="UI.openCheatGate()">🔓 破解版</button>
     <button class="btn" onclick="UI.backToTitle()">返回标题</button>
@@ -792,7 +815,7 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
-  openMarriage, openEnfeoff, openFactions, showExportCode, showImportCode,
+  openMarriage, openEnfeoff, openFactions, showExportCode, showImportCode, openGuide, maybeOnboard,
   promptNewborns, confirmNewbornName,
   openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};

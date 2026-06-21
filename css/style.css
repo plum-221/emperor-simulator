@@ -648,6 +648,15 @@ b{color:var(--gold-br);font-weight:600;}
 .code-box{width:100%;min-height:96px;margin:6px 0;box-sizing:border-box;resize:vertical;
   font-family:monospace;font-size:11px;line-height:1.4;word-break:break-all;
   background:rgba(0,0,0,.3);color:#d8c89a;border:1px solid #8a6a3a;border-radius:8px;padding:8px;}
+/* 新手引导浮层 */
+.guide{text-align:center;}
+.guide .g-step{font-size:11px;color:#a8895a;letter-spacing:.1em;margin-bottom:2px;}
+.guide h2{margin:2px 0 8px;}
+.g-body{text-align:left;font-size:13px;line-height:1.85;color:var(--ink);background:rgba(0,0,0,.16);border-radius:9px;padding:11px 13px;}
+.g-dots{display:flex;gap:7px;justify-content:center;margin:12px 0;}
+.g-dot{width:8px;height:8px;border-radius:50%;background:rgba(180,150,90,.3);transition:.2s;}
+.g-dot.on{background:var(--gold-br);transform:scale(1.25);}
+.g-btns{display:flex;gap:10px;justify-content:center;align-items:center;}
 .wf-ctrl{text-align:center;margin:4px 0;}
 .wf-tip{font-size:12.5px;color:#6a4a2a;margin-bottom:6px;line-height:1.5;}
 .wf-btns{display:flex;gap:8px;justify-content:center;}

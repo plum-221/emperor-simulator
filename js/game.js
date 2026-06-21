@@ -92,6 +92,7 @@ const api = {
     UI.toGame();
     SFX.gong();
     this.beginTurn();
+    if(UI.maybeOnboard) UI.maybeOnboard();   // 首通新手引导（仅第一次·可菜单重看）
   },
 
   pickFace(M){ const arr=(M.generals&&M.generals.length?M.generals:M.ministers)||[]; return arr.length?R.pick(arr).file:""; },
