@@ -8,6 +8,9 @@
 const MapSys = (() => {
 "use strict";
 
+let buildOpen=false;   // 营建·编练菜单是否展开（默认收起·省版面）
+function toggleBuild(){ buildOpen=!buildOpen; UI.renderPanel("map"); }
+
 const FACTION_COLOR = {
   self:"#d9b65f", neutral:"#8a8170",
   北狄:"#5b82b8", 西羌:"#b07ac0", 契丹:"#4a9d8e",
@@ -401,20 +404,22 @@ function actionCard(s){
   const myU=unitsIn(r.id,"self");
   if(myU.length){ h+=`<div class="unit-row">`+myU.map(u=>{const t=UNIT_TYPES[u.type];
     return `<button class="unit-chip ${u.id===m.selU?'on':''}" onclick="MapSys.selectUnit('${u.id}')" title="点选此军，再点高亮州移动/攻取">
-      ${t.icon}${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?'·征':''}</button>`;}).join("")+`</div>`; }
+      ${t.name} <i>气${u.hp}/${u.maxhp}·行${u.movesLeft}</i>${u.id===m.selU?'·征':''}</button>`;}).join("")+`</div>`; }
   if(r.owner==="self"){
     initCity(r);
-    // 营建队列
+    // 营建队列（始终显示进度）
     if(r.queue.length){ h+=`<div class="build-q">`+r.queue.map((it,i)=>{const pct=Math.round((1-it.left/it.cost)*100);
       return `<span class="bq-item"><b>${it.name}</b><span class="bq-bar"><u style="width:${pct}%"></u></span><button onclick="MapSys.cancelQueue('${r.id}',${i})">✕</button></span>`;}).join("")+`</div>`; }
-    // 建筑
-    h+=`<div class="build-grid">`+Object.values(BUILDINGS).map(b=>{const lv=r.build[b.key]||0;
-      const full=lv>=b.max; return `<button class="bld ${full?'full':''}" ${full?'disabled':''} onclick="MapSys.queueBuild('${r.id}','${b.key}')" title="${b.desc}（建造产能 ${b.build}）">${b.icon}${b.name} <i>${lv}/${b.max}</i></button>`;}).join("")+`</div>`;
-    // 编练军队
-    h+=`<div class="post-row">`+Object.values(UNIT_TYPES).map(t=>{const locked=t.reqTech&&!hasTech(t.reqTech);
-      return `<button class="chip ${locked?'':'gold'}" ${locked?'disabled':''} onclick="MapSys.queueUnit('${r.id}','${t.key}')" title="${locked?'需国策解锁':'编练（产能 '+t.build+'）'}">${t.icon}${t.name}${locked?'锁':' ✦'+t.build}</button>`;}).join("")
-      + (r.dev<3?`<button class="chip" onclick="MapSys.develop('${r.id}')">开发(库${10*(r.dev+1)})</button>`:`<span class="chip" style="opacity:.5">极繁华</span>`)
-      +`</div>`;
+    // 营建·编练菜单：默认折叠，省版面（点开才展开建筑/编练，不再霸占整张面板）
+    h+=`<button class="build-toggle" onclick="MapSys.toggleBuild()">🔨 营建 · 编练${buildOpen?" ▴":" ▾"}</button>`;
+    if(buildOpen){
+      h+=`<div class="build-grid">`+Object.values(BUILDINGS).map(b=>{const lv=r.build[b.key]||0;
+        const full=lv>=b.max; return `<button class="bld ${full?'full':''}" ${full?'disabled':''} onclick="MapSys.queueBuild('${r.id}','${b.key}')" title="${b.desc}（建造产能 ${b.build}）">${b.name} <i>${lv}/${b.max}</i></button>`;}).join("")+`</div>`;
+      h+=`<div class="post-row">`+Object.values(UNIT_TYPES).map(t=>{const locked=t.reqTech&&!hasTech(t.reqTech);
+        return `<button class="chip ${locked?'':'gold'}" ${locked?'disabled':''} onclick="MapSys.queueUnit('${r.id}','${t.key}')" title="${locked?'需国策解锁':'编练（产能 '+t.build+'）'}">${t.name}${locked?'锁':' ✦'+t.build}</button>`;}).join("")
+        + (r.dev<3?`<button class="chip" onclick="MapSys.develop('${r.id}')">开发(库${10*(r.dev+1)})</button>`:`<span class="chip" style="opacity:.5">极繁华</span>`)
+        +`</div>`;
+    }
   }else if(bordersSelf(r)){
     h+= !r.explored ? `<div class="post-row"><button class="chip" onclick="MapSys.explore('${r.id}')">遣使探索</button></div>`
       : `<p class="panel-tip" style="margin:6px 0 0">选一支相邻我军，点此州（红色高亮）发起攻城。</p>`;
@@ -451,7 +456,7 @@ function renderBody(s){
     <div id="map-action">${actionCard(s)}</div>`;
 }
 
-return {initState, produce, growEnemies, selectRegion, selectUnit, explore, develop, endTurn,
+return {initState, produce, growEnemies, selectRegion, selectUnit, explore, develop, endTurn, toggleBuild,
   queueUnit, queueBuild, cancelQueue, startResearch, openTech, resolveAssault, quickAssault,
   renderBody, counts, REGIONS, UNIT_TYPES, TECH, BUILDINGS};
 })();

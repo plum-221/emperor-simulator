@@ -33,7 +33,7 @@ function open(cfg){
     ourHP:100, enemyHP:100, round:0, log:[], over:false, win:false,
     lastP:null, lastE:null, onResolve:cfg.onResolve
   };
-  if(typeof MusicSys!=="undefined") MusicSys.setScene("battle");
+  if(typeof MusicSys!=="undefined") MusicSys.setScene("map");   // 用天下真曲(world.mp3)·不再切合成电子战鼓
   B.log.push(`【${B.enemy}】列阵${B.enemyPow|0} · 我军主帅 ${B.leader}（势${B.ourPow|0}）。鼓声三通，两阵对圆！`);
   // 战斗期间禁用弹窗关闭键，防中途弃战
   const mc=document.getElementById("modal-close"); if(mc) mc.style.display="none";

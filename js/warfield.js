@@ -38,41 +38,46 @@ function buildGrid(){
 
 /* ---------- 生成部队 ---------- */
 function mkUnit(o){ return Object.assign({hp:o.maxhp,acted:false,x:-1,y:-1},o); }
+const UNIT_FACE={ guard:"assets/portraits/units/guard.png", archer:"assets/portraits/units/archer.png",
+  foe_chief:"assets/portraits/units/foe_chief.png", foe_soldier:"assets/portraits/units/foe_soldier.png",
+  foe_archer:"assets/portraits/units/foe_archer.png" };
 function buildUnits(cfg){
   const us=[]; let n=0;
   const mil=cfg.ourMilitary||40;
   const gens=(cfg.generals||[]).slice(0,4);
-  // 主将（武将）
+  // 主将（武将）—— 头像用各将真立绘
   let leaderId=null, bestMil=-1;
   gens.forEach(g=>{
-    const u=mkUnit({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"将",
+    const u=mkUnit({id:"u"+(n++),side:"our",name:g.name,kind:"将",icon:"将",face:g.portrait||"",
       maxhp:Math.round(58+g.mil*0.6+mil*0.2), atk:Math.round(11+g.mil*0.5+mil*0.1), rng:1, move:3});
     if(g.mil>bestMil){ bestMil=g.mil; leaderId=u.id; }
     us.push(u);
   });
-  // 御驾亲征：陛下作为强力单位
+  // 御驾亲征：陛下作为强力单位（头像用帝王按龄立绘）
   if(cfg.emperor && cfg.withEmperor){
     const e=cfg.emperor;
     us.push(mkUnit({id:"u"+(n++),side:"our",name:e.name+"(亲征)",kind:"帝",icon:"君",isEmperor:true,
+      face:(typeof emperorFace!=="undefined"?emperorFace(e.age):""),
       maxhp:Math.round(70+e.martial*0.7+mil*0.2), atk:Math.round(14+e.martial*0.6+mil*0.1), rng:1, move:3}));
   }
   // 禁军步卒（由国家兵力派生，凑足阵容）
   const footN = us.length<3?2:1;
-  for(let k=0;k<footN;k++) us.push(mkUnit({id:"u"+(n++),side:"our",name:"禁军"+(k+1),kind:"卒",icon:"丨",
+  for(let k=0;k<footN;k++) us.push(mkUnit({id:"u"+(n++),side:"our",name:"禁军"+(k+1),kind:"卒",icon:"丨",face:UNIT_FACE.guard,
     maxhp:Math.round(42+mil*0.4), atk:Math.round(8+mil*0.22), rng:1, move:3}));
   // 弓手（射程2）
-  us.push(mkUnit({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"弓",
+  us.push(mkUnit({id:"u"+(n++),side:"our",name:"神射营",kind:"弓",icon:"弓",face:UNIT_FACE.archer,
     maxhp:Math.round(34+mil*0.25), atk:Math.round(10+mil*0.2), rng:2, move:2}));
   if(leaderId){ const L=us.find(u=>u.id===leaderId); if(L){ L.isLeader=true; L.icon="帅"; } }
 
-  // 敌军
+  // 敌军（头像：王=酋首 · 弓手=番弓 · 余=番兵）
   const ep=cfg.enemyPow||55, foeN=Math.max(3,Math.min(5,3+Math.floor(ep/28)));
   for(let k=0;k<foeN;k++){
-    const lead=k===0;
+    const lead=k===0, foeArcher=(k===foeN-1);
     us.push(mkUnit({id:"f"+(n++),side:"foe",name:lead?(cfg.enemy+"·王"):(cfg.enemy+"兵"+k),
       kind:lead?"酋":"番",icon:lead?"酋":"敌",isLeader:lead,
+      face:lead?UNIT_FACE.foe_chief:(foeArcher?UNIT_FACE.foe_archer:UNIT_FACE.foe_soldier),
       maxhp:Math.round((lead?70:46)+ep*0.5*rnd(0.85,1.1)),
-      atk:Math.round((lead?14:9)+ep*0.18*rnd(0.85,1.1)), rng:(k===foeN-1?2:1), move:3}));
+      atk:Math.round((lead?14:9)+ep*0.18*rnd(0.85,1.1)), rng:foeArcher?2:1, move:3}));
   }
   return us;
 }
@@ -244,8 +249,11 @@ function render(){
     if(u){
       const hpPct=Math.max(0,Math.round(u.hp/u.maxhp*100));
       const side=u.side==="our"?"u-our":"u-foe";
-      inner=`<div class="wf-unit ${side}${u.acted&&u.side==="our"&&B.phase==="battle"?" acted":""}${u.isLeader?" lead":""}" data-id="${u.id}">
-        <i>${u.icon}</i><b>${u.name}</b>
+      // 头像作标识（缺图回退为类型字）；类型小角标 + HP 条
+      const face=u.face?`<img class="wf-face" src="${u.face}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'wf-glyph',textContent:'${u.icon}'}))">`
+        :`<span class="wf-glyph">${u.icon}</span>`;
+      inner=`<div class="wf-unit ${side}${u.acted&&u.side==="our"&&B.phase==="battle"?" acted":""}${u.isLeader?" lead":""}" data-id="${u.id}" title="${u.name}">
+        ${face}<span class="wf-badge">${u.icon}</span>
         <span class="wf-hp"><u style="width:${hpPct}%"></u></span></div>`;
     }
     cells+=`<div class="${cls}" data-x="${x}" data-y="${y}">${inner}</div>`;

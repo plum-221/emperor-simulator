@@ -660,6 +660,7 @@ function collectAssetUrls(){
   (M.ministers||[]).slice(0,12).forEach(x=>addC(x.file));                         // 开局班底+早期招贤大致命中
   (M.ministers||[]).slice(12).forEach(x=>addR(x.file));
   (M.consorts ||[]).forEach(x=>addR(x.file));
+  ["guard","archer","foe_chief","foe_soldier","foe_archer"].forEach(k=>addR("assets/portraits/units/"+k+".png")); // 沙盘单位头像
   const c=[...crit];
   return { crit:c, rest:[...rest].filter(u=>!crit.has(u)) };
 }
