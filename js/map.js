@@ -195,6 +195,7 @@ function attack(u,r){
   if(!isAttackTarget(u,r)){ Game.toast("不可攻击此地"); return; }
   if(!r.explored){ Game.toast("敌情不明，请先遣使探索"); return; }
   u.movesLeft=0; M().sel=r.id;
+  const sf=Game.s.flags; if(sf){ sf.warClock=MONTH_DAYS; sf.atWar=true; }   // 攻城兴兵：每日军粮军饷加重
   // 节奏分流：守备孱弱的小股残敌即时围攻拿下，免去为扫尾反复开战棋；
   // 真正有防御纵深的城（守备厚 / 已筑城墙）才劳师亲临沙盘会战。
   const trivial = defenseOf(r) <= 14 && !(r.build&&r.build.wall);
@@ -296,6 +297,7 @@ function enemyTurn(s){
       t.garrison-=atk;
       if(t.garrison<=0){ t.owner=r.owner; t.faction=r.owner; t.garrison=R.i(14,20); r.garrison=Math.round(r.garrison*0.72); }
     }else if(mine.length && !(s.allies&&s.allies[r.faction]>0) && R.chance(32)){  // 袭扰：攻你边州（和亲盟邦不犯边）
+      if(s.flags){ s.flags.warClock=MONTH_DAYS; s.flags.atWar=true; }   // 番邦犯边：战时·每日物资消耗加重
       const t=mine.sort((a,b)=>defenseOf(a)-defenseOf(b))[0];
       const guards=unitsIn(t.id,"self");
       if(guards.length){ guards.forEach(u=>u.hp-=R.i(3,9)); m.units=m.units.filter(u=>u.hp>0);

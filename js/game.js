@@ -901,6 +901,7 @@ const api = {
   /* ---------- 战争 ---------- */
   startWar(type){
     const s=this.s, n=s.nation;
+    s.flags.warClock=MONTH_DAYS; s.flags.atWar=true;   // 烽烟既起：约一月战时，每日物资消耗加重
     const enemy=R.pick(ENEMIES);
     const ePow=R.i(40,75)+n.year+ (type==="invade"?8:0);
     const marshal=s.ministers.find(m=>m.post==="marshal");
@@ -995,7 +996,10 @@ const api = {
       const MN=["","正","二","三","四","五","六","七","八","九","十","冬","腊"];
       const date=`${n.year}年 ${MN[n.month]}月 ${n.day}日`;
       const head = (n.month===1&&n.day===1) ? "新　岁" : (n.day===1 ? "新　月" : "翌　日");
-      UI.dayTransition(head, date, "晨光熹微，又是一日");
+      const dd=s._dayDrain;
+      const sub = dd ? `${s.flags.atWar?"⚔ 烽烟未息　":""}日耗 粮 ${dd.food}・帑 ${dd.coin}${dd.war>1.2?`（战时 ×${dd.war}）`:""}`
+                     : "晨光熹微，又是一日";
+      UI.dayTransition(head, date, sub);
     }
     this.beginTurn();
     // 入夜密报：密谍司戌时密呈（仅有异动才弹·快进静默）
@@ -1007,12 +1011,51 @@ const api = {
     if(!this._ff && s._newborns && s._newborns.length && typeof UI!=="undefined" && UI.promptNewborns) UI.promptNewborns();
   },
 
-  /* 每日：轻量推进（健康微漂移 + 百官暗面演化 + 暗线养熟检测）*/
+  /* 每日：轻量推进（健康微漂移 + 每日物资消耗 + 百官暗面演化 + 暗线养熟检测）*/
   dailyTick(){
-    const e=this.s.emperor;
+    const e=this.s.emperor, f=this.s.flags;
     if(R.chance(8)) e.health-=1;         // 日常损耗（约每月 -2~3，与原月制相当）
+    // 战时钟摆：亲征/受寇时点燃，逐日冷却；驱动 atWar（密谍司通敌加速）与物资消耗烈度
+    if(f.warClock>0){ f.warClock--; f.atWar = f.warClock>0; } else f.atWar=false;
+    this.dailyConsume();                 // 每日柴米：黎民口粮 + 行伍军粮军饷（人口/战事驱动）
     if(typeof SpySys!=="undefined"){ SpySys.tick(this.s); this.spyMaturity(); }  // 私下勾当暗中滋长
     this.clampAll();
+  },
+
+  /* 战争烈度系数（1.0 承平 → 约 2.1 大战）：边患(我境与敌接壤之州数) + 战时钟(亲征/犯边/攻城)。
+     注：军队规模本身已由消耗式中的 n.military 项计入，此系数只表「战事烈度」，故不再叠加陈兵数避免重复。
+     无地图(极端旧档)时退化为 1，安全。 */
+  warFactor(){
+    const s=this.s; let w=1;
+    const M=s.map;
+    if(M && M.regions){
+      let frontier=0;
+      for(const r of M.regions){
+        if(r.owner!=="self") continue;
+        if(r.adj.some(id=>{const a=M.regions.find(x=>x.id===id); return a && a.owner!=="self" && a.owner!=="neutral";})) frontier++;
+      }
+      w += Math.min(0.5, frontier*0.08);            // 边患：与敌接壤的州越多，供军越费
+    }
+    if(s.flags && s.flags.atWar) w += 0.6;          // 显式战时（亲征/受寇/攻城·warClock 未熄）
+    return Math.min(2.1, w);
+  },
+
+  /* 每日物资消耗：黎民日食(按人口) + 行伍军粮军饷(按军队·战时成倍) —— 治国先算柴米油盐。
+     说明：人口口粮与军饷已从「月结」移至此处逐日扣减（避免双重计入），战事系数让边患/亲征显著加重负担。*/
+  dailyConsume(){
+    const s=this.s, n=s.nation;
+    const war=this.warFactor();
+    // 粮草：黎民日食 + 军粮（战时翻倍）
+    let food = n.people*0.0016 + n.military*0.0013*war;
+    if(this.hasTalent("t_logistics")) food*=0.85;   // 兵精粮足：损耗略减
+    // 国库：军饷（战时加征）；理财天赋稍缓。百官俸禄仍按月结，不在此重复。
+    let coin = n.military*0.0030*war;
+    if(this.hasTalent("t_finance")) coin*=0.85;      // 理财有道
+    n.food     = R.clamp(n.food - food);
+    n.treasury = R.clamp(n.treasury - coin);
+    // 断粮：饥兵渐溃、流民四起（与月结的存粮<12 重罚互补，此为日级缓压）
+    if(n.food < 6){ n.military=R.clamp(n.military-1); if(R.chance(40)) n.people=R.clamp(n.people-1); }
+    s._dayDrain = {food:+food.toFixed(2), coin:+coin.toFixed(2), war:+war.toFixed(2)};  // 供日转场 UI 提示
   },
 
   /* 每月：经济 / 忠诚 / 怀孕 / 百官治绩结算 */
@@ -1032,9 +1075,10 @@ const api = {
     });
     // 经济：税入 - 开支（开支随军队/后宫/百官增长 → 治国是收支平衡的艺术）
     const income=n.people/18 + n.land/24 + (this.hasTalent("t_finance")?2:0);   // 天赋·理财有道 +2
-    const upkeep=n.military/11 + s.consorts.length*0.8 + s.ministers.filter(m=>m.post).length*1.3;
+    // 注：军饷已移至「每日物资消耗」(dailyConsume·战时加征)，此处月结开支只含后宫与百官俸禄
+    const upkeep=s.consorts.length*0.8 + s.ministers.filter(m=>m.post).length*1.3;
     n.treasury+=income-upkeep;                 // 净流可正可负，荒政则赤字
-    n.food   += n.land/24 - n.people/24;        // 地养粮、民耗粮（人多则粮紧）
+    n.food   += n.land/24;                       // 地养粮（黎民口粮已移至每日扣减·见 dailyConsume）
     n.military-= n.military/28 * (this.hasTalent("t_drill")?0.5:1);   // 天赋·治军严明：损耗减半
     n.people  -= n.people/120 * (this.hasTalent("t_benevol")?0.5:1);  // 天赋·仁泽万民：回落减半
     if(this.hasTalent("t_taxation"))  gain("people",0.6);     // 天赋·轻徭薄赋：民心月回升
