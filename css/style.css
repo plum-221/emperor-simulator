@@ -624,30 +624,35 @@ b{color:var(--gold-br);font-weight:600;}
 .dip-row{display:flex;flex-direction:column;gap:6px;padding:10px 4px;border-bottom:1px solid rgba(180,140,70,.18);}
 .dip-who{font-size:13px;color:var(--ink);} .dip-who>b{font-size:14px;}
 .dip-opts{display:flex;flex-wrap:wrap;gap:6px;}
-.chip.dip{border-color:#b98a5a;color:#e7c79a;background:rgba(185,138,90,.14);}
-.chip.dip:hover{background:rgba(185,138,90,.32);}
-.m-waiqi{font-size:10.5px;padding:0 5px;border-radius:7px;color:#e8b0c4;border:1px solid #c47894;background:rgba(196,120,148,.16);margin-left:4px;}
-/* 朝局势力图（党争） */
+.chip.dip{border-color:#a06f33;color:#5e3712;background:rgba(150,95,40,.18);font-weight:600;}
+.chip.dip:hover{background:rgba(150,95,40,.34);}
+.m-waiqi{font-size:10.5px;padding:0 5px;border-radius:7px;color:#9a3a64;border:1px solid #c47894;background:rgba(196,120,148,.18);margin-left:4px;}
+/* 朝局势力图（党争）——弹窗为米色宣纸底，故用深字浅卡 */
 .fac-bar.alert{box-shadow:0 0 0 1px #c46,0 0 10px rgba(204,68,102,.4);}
 .fac-grid{display:flex;flex-direction:column;gap:8px;margin:6px 0;}
-.fac-card{border:1px solid #8a8170;border-radius:9px;padding:8px 10px;background:rgba(40,28,16,.32);}
+.fac-card{border:1px solid #b09a6a;border-radius:9px;padding:8px 10px;background:rgba(95,68,34,.12);}
 .fac-head{display:flex;align-items:center;gap:8px;}
-.fac-head>b{font-size:14px;} .fac-pow{font-size:11.5px;color:#caa765;margin-left:auto;}
+.fac-head>b{font-size:14px;} .fac-pow{font-size:11.5px;color:#8a6320;margin-left:auto;font-weight:600;}
 .fac-peril{font-size:11px;color:#fff;background:#b04848;border-radius:6px;padding:0 6px;}
-.fac-meta{font-size:11px;color:#9a8767;margin:3px 0 5px;}
+.fac-meta{font-size:11px;color:#6e5836;margin:3px 0 5px;}
 .fac-mems{display:flex;flex-wrap:wrap;gap:5px;}
-.fac-mem{font-size:11.5px;color:var(--ink);background:rgba(0,0,0,.22);border-radius:6px;padding:2px 6px;display:inline-flex;align-items:center;gap:4px;}
-.fac-post{font-style:normal;color:#caa765;font-size:10px;} .fac-wq{font-style:normal;color:#e8b0c4;font-size:10px;}
-.fac-mem>u{text-decoration:none;color:#8a7a5a;font-size:10px;}
-.fac-tens{margin-top:8px;border-top:1px solid rgba(180,140,70,.2);padding-top:7px;}
-.fac-tens>b{display:block;font-size:12px;color:#c98;margin-bottom:5px;}
-.fac-t{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;margin:0 8px 5px 0;color:var(--ink);}
-.fac-t>em{font-style:normal;} .fac-t.feud>em{color:#d05a5a;} .fac-t.rival>em{color:#d0a04a;}
-/* 存档码导出/导入 */
+.fac-mem{font-size:11.5px;color:#3a2410;background:rgba(60,40,18,.1);border:1px solid rgba(120,90,50,.25);border-radius:6px;padding:2px 6px;display:inline-flex;align-items:center;gap:4px;}
+.fac-post{font-style:normal;color:#9a6f24;font-size:10px;} .fac-wq{font-style:normal;color:#a8437a;font-size:10px;}
+.fac-mem>u{text-decoration:none;color:#7a6238;font-size:10px;}
+.fac-tens{margin-top:8px;border-top:1px solid rgba(120,90,50,.3);padding-top:7px;}
+.fac-tens>b{display:block;font-size:12px;color:#a0561f;margin-bottom:5px;}
+.fac-t{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;margin:0 8px 5px 0;color:#3a2410;}
+.fac-t>em{font-style:normal;} .fac-t.feud>em{color:#c23a3a;} .fac-t.rival>em{color:#b07a1a;}
+/* 存档码导出/导入——深底浅字，明确是「码框」而非空白框 */
 .ar-code{display:flex;gap:8px;justify-content:center;margin:8px 0 2px;}
 .code-box{width:100%;min-height:96px;margin:6px 0;box-sizing:border-box;resize:vertical;
   font-family:monospace;font-size:11px;line-height:1.4;word-break:break-all;
-  background:rgba(0,0,0,.3);color:#d8c89a;border:1px solid #8a6a3a;border-radius:8px;padding:8px;}
+  background:#241810;color:#e8d6a8;border:1px solid #8a6a3a;border-radius:8px;padding:8px;}
+.code-box::placeholder{color:#9a865a;}
+/* 弹窗（米色宣纸底）内的提示语：原 .panel-tip 是浅金，在米底上发白看不清 → 改深褐 */
+.modal-box .panel-tip{color:#6e4a1e;opacity:.95;}
+/* 菜单内的次级按钮：原 .btn 无底色，在米底弹窗里成白框 → 给描边底 */
+.menu-list .btn:not(.btn-primary){background:linear-gradient(180deg,rgba(90,60,28,.08),rgba(90,60,28,.16));border:1px solid var(--gold-dk);color:#5a3a14;}
 /* 新手引导浮层 */
 .guide{text-align:center;}
 .guide .g-step{font-size:11px;color:#a8895a;letter-spacing:.1em;margin-bottom:2px;}

@@ -571,7 +571,7 @@ function openFactions(){
   const fac=Game.computeFactions();
   const FCLS={外戚党:"#c47894",武将集团:"#c08a4a",权臣朋党:"#b85a5a",清流:"#5a9bb0",朋党:"#8a8170"};
   if(!fac.factions.length){
-    openModal(`<h2>朝局势力图</h2><p class="panel-tip">满朝文武各自为政，尚未结成朋党。<br>※ 派系由「师徒/盟友/同党/亲族」关系自然聚合而成；招揽更多关联人物、或密谍司养出结党，朝局便会分化。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return;
+    openModal(`<h2>朝局势力图</h2><p class="panel-tip">满朝文武各自为政，尚未结成朋党。<br>※ 派系由「师徒/盟友/同党/亲族」关系自然聚合而成；招揽更多关联人物、或密谍司养出结党，朝局便会分化。</p><button class="btn ghost" onclick="UI.closeModal()">退下</button>`); return;
   }
   const cards=fac.factions.map(f=>{
     const col=FCLS[f.kind]||"#8a8170";
@@ -585,27 +585,27 @@ function openFactions(){
   const peril=fac.factions.find(f=>f.peril);
   const verdict=peril?`<p class="panel-tip" style="color:#e08a8a">※ <b>${peril.kind}</b>权重过盛、野心炽烈，已成尾大不掉之势——宜遣密谍司察其结党、或以问罪剪其羽翼，否则恐有不臣之祸。`
     :`<p class="panel-tip">※ ${fac.dominant?`当前<b>${fac.dominant.kind}</b>权重最盛。`:""}派系由关系网自然聚合；扶植清流、剪除朋党，乃帝王制衡之术。`;
-  openModal(`<h2>朝局势力图 · 党争</h2>${verdict}<div class="fac-grid">${cards}</div>${tens}<button class="btn" onclick="UI.closeModal()">退下</button>`);
+  openModal(`<h2>朝局势力图 · 党争</h2>${verdict}<div class="fac-grid">${cards}</div>${tens}<button class="btn ghost" onclick="UI.closeModal()">退下</button>`);
 }
 /* ---------- 和亲结盟 选择弹窗 ---------- */
 function openMarriage(pid){
   const G=Game, ps=G.marriageablePrincesses(), fs=G.marriageTargets();
-  if(!ps.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">尚无适龄待嫁的公主（需年满 14 岁）。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
-  if(!fs.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">四方番邦或已臣服、或已结盟，眼下无可和亲之国。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!ps.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">尚无适龄待嫁的公主（需年满 14 岁）。</p><button class="btn ghost" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!fs.length){ openModal(`<h2>和亲结盟</h2><p class="panel-tip">四方番邦或已臣服、或已结盟，眼下无可和亲之国。</p><button class="btn ghost" onclick="UI.closeModal()">退下</button>`); return; }
   let list=pid?ps.filter(p=>String(p.id)===String(pid)):ps; if(!list.length) list=ps;
   const rows=list.map(p=>`<div class="dip-row"><div class="dip-who"><b>${p.name}</b> 公主 · ${p.age}岁 · 魅${p.charm}</div>
     <div class="dip-opts">${fs.map(f=>`<button class="chip dip" onclick="Game.doMarriage('${p.id}','${f}')">嫁 ${f}</button>`).join("")}</div></div>`).join("");
-  openModal(`<h2>和亲结盟 · 秦晋之好</h2><p class="panel-tip">择一公主远嫁番邦，缔结<b>六年盟约</b>：该国不复犯边，并奉表献礼朝贡（国库 +8·粮 +6·威望 +5）。盟期满后须重修旧好，否则边衅复萌。</p>${rows}<button class="btn" onclick="UI.closeModal()">从长计议</button>`);
+  openModal(`<h2>和亲结盟 · 秦晋之好</h2><p class="panel-tip">择一公主远嫁番邦，缔结<b>六年盟约</b>：该国不复犯边，并奉表献礼朝贡（国库 +8·粮 +6·威望 +5）。盟期满后须重修旧好，否则边衅复萌。</p>${rows}<button class="btn ghost" onclick="UI.closeModal()">从长计议</button>`);
 }
 /* ---------- 分封就藩 选择弹窗 ---------- */
 function openEnfeoff(pid){
   const G=Game, ps=G.enfeoffablePrinces(), rs=G.enfeoffableRegions();
-  if(!ps.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可分封的皇子（需年满 15 岁、非太子、未就藩）。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
-  if(!rs.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可供分封的州郡（需我朝直辖、非都城、未封藩）。先往「天下」开疆拓土。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!ps.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可分封的皇子（需年满 15 岁、非太子、未就藩）。</p><button class="btn ghost" onclick="UI.closeModal()">退下</button>`); return; }
+  if(!rs.length){ openModal(`<h2>分封就藩</h2><p class="panel-tip">尚无可供分封的州郡（需我朝直辖、非都城、未封藩）。先往「天下」开疆拓土。</p><button class="btn ghost" onclick="UI.closeModal()">退下</button>`); return; }
   let list=pid?ps.filter(p=>String(p.id)===String(pid)):ps; if(!list.length) list=ps;
   const rows=list.map(p=>`<div class="dip-row"><div class="dip-who"><b>${p.name}</b> 皇子 · ${p.age}岁 · 武${p.martial} 政${p.politics}</div>
     <div class="dip-opts">${rs.map(r=>`<button class="chip dip" onclick="Game.doEnfeoff('${p.id}','${r.id}')">就藩 ${r.name}</button>`).join("")}</div></div>`).join("");
-  openModal(`<h2>分封就藩 · 藩屏王室</h2><p class="panel-tip">封皇子为藩王、镇守一州：藩镇拱卫，守备骤增、岁有藩贡。然藩王年久兵厚易生异心，恐有<b>拥兵自重</b>之患——封建乃双刃之剑。</p>${rows}<button class="btn" onclick="UI.closeModal()">从长计议</button>`);
+  openModal(`<h2>分封就藩 · 藩屏王室</h2><p class="panel-tip">封皇子为藩王、镇守一州：藩镇拱卫，守备骤增、岁有藩贡。然藩王年久兵厚易生异心，恐有<b>拥兵自重</b>之患——封建乃双刃之剑。</p>${rows}<button class="btn ghost" onclick="UI.closeModal()">从长计议</button>`);
 }
 
 /* ---------- 标题 / 启动 ---------- */
