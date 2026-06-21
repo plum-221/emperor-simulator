@@ -290,7 +290,7 @@ function open(cfg){
      log:[`王师讨伐 ${cfg.enemy}，于此沙盘列阵对垒！`], onResolve:cfg.onResolve, win:false, result:null};
   B.units=buildUnits(cfg);
   autoPlace();
-  if(typeof MusicSys!=="undefined") MusicSys.setScene("battle");
+  if(typeof MusicSys!=="undefined") MusicSys.setScene("map");   // 沙盘沿用天下真曲(world.mp3)·不再切合成电子战鼓
   const mc=document.getElementById("modal-close"); if(mc) mc.style.display="none";  // 战中禁关闭
   render();
 }
