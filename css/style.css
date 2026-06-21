@@ -651,6 +651,11 @@ b{color:var(--gold-br);font-weight:600;}
 .code-box::placeholder{color:#9a865a;}
 /* 弹窗（米色宣纸底）内的提示语：原 .panel-tip 是浅金，在米底上发白看不清 → 改深褐 */
 .modal-box .panel-tip{color:#6e4a1e;opacity:.95;}
+/* 米底弹窗内的加粗（全局 b 是浅金，在米底发白）→ 深金棕（仅文字类弹窗·避开沙盘战棋深底） */
+.modal-box .panel-tip b,.modal-box .dip-row b,.modal-box .dip-who b,.fac-card b,.guide .g-body b{color:#9a5708;}
+/* 招贤/选秀揭示卡的属性药丸：原深叠底+浅字在米底发灰 → 浅暖底+深字 */
+.rc-stats span{background:rgba(112,82,44,.16)!important;color:#3a2410;border-color:#b09060!important;}
+.rc-tip{color:#6e4a1e;}
 /* 菜单内的次级按钮：原 .btn 无底色，在米底弹窗里成白框 → 给描边底 */
 .menu-list .btn:not(.btn-primary){background:linear-gradient(180deg,rgba(90,60,28,.08),rgba(90,60,28,.16));border:1px solid var(--gold-dk);color:#5a3a14;}
 /* 新手引导浮层 */
