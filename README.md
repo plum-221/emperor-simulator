@@ -44,7 +44,7 @@ js/audio.js        Web Audio 合成音效
 js/data.js         国家/帝王/官职/性格/事件库/角色构建
 js/game.js         引擎：回合循环 / 经济结算 / 战争 / 传承 / 结局
 js/ui.js           视图与交互：HUD / 帝王面板 / 事件 / 五大管理面板
-assets/portraits/  真实古画立绘（公共版权）
+assets/portraits/  AI 生成赛璐璐立绘（ComfyUI + animagineXL3.1）
 assets/manifest.json  立绘清单
 ```
 
