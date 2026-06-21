@@ -422,20 +422,32 @@ function finish(win,reason){
   render();
 }
 
-/* ---------- 布阵阶段：调整己方站位 ---------- */
+/* ---------- 布阵阶段：调整己方站位 ----------
+   初次布阵：仅左两列阵地。战中「重新布阵」(B.freeDeploy)：全盘自由调动己方阵型。 */
 function deployMove(x,y){
-  if(x>1) { return; }                          // 仅左两列布阵区
-  if(TERRAIN[B.grid[y][x]].move>=99) return;   // 河流不可站
+  if(!B.freeDeploy && x>1) { return; }          // 初次布阵仅左两列；战中重布阵不限
+  if(TERRAIN[B.grid[y][x]].move>=99) return;     // 河流不可站
   const occ=unitAt(x,y);
+  if(occ && occ.side!=="our") return;            // 不可占用/换位敌方单位
   if(B.sel){
     const u=B.units.find(p=>p.id===B.sel);
-    if(occ&&occ!==u){ // 交换
+    if(occ&&occ!==u){ // 与己方换位
       const ox=u.x,oy=u.y; u.x=occ.x;u.y=occ.y; occ.x=ox;occ.y=oy;
     }else{ u.x=x; u.y=y; }
     B.sel=null; render();
   }else if(occ&&occ.side==="our"){ B.sel=occ.id; render(); }
 }
-function startBattle(){ B.phase="battle"; B.sel=null; B.turn=1; B.units.forEach(u=>{u.acted=false; u.nrg=1;}); render(); }
+function startBattle(){
+  const resuming = B.turn>0;                     // 战中重布阵后继续：保留回合/气/已动状态，不重置战局
+  B.phase="battle"; B.freeDeploy=false; B.sel=null; B.skillMode=false;
+  if(!resuming){ B.turn=1; B.units.forEach(u=>{u.acted=false; u.nrg=1;}); }
+  render();
+}
+/* 战中「重新布阵」：随时自由调动己方阵型，再「继续作战」回到战斗（不消耗回合）*/
+function enterRedeploy(){
+  if(B.phase!=="battle") return;
+  B.phase="deploy"; B.freeDeploy=true; B.sel=null; B.skillMode=false; render();
+}
 
 /* ---------- 渲染 ---------- */
 function render(){
@@ -473,8 +485,9 @@ function render(){
   let ctrl="";
   const legend=`<div class="wf-legend">克制：步克骑·骑克弓·弓克步(×1.5)｜射程 步/骑1·弓2·医1｜机动 骑4·步/医3·弓2｜储能满放<b>技能</b>｜<b>斩敌主将即胜</b></div>`;
   if(B.phase==="deploy"){
-    ctrl=`<div class="wf-tip">布阵：点己方单位再点左侧阵地格可换位（仅左二列）。摆好后开战。</div>${legend}
-      <button class="btn btn-primary wf-go" id="wf-start">开 战</button>`;
+    const free=B.freeDeploy;
+    ctrl=`<div class="wf-tip">${free?"自由布阵：点己方单位、再点任意空格即可调动（全盘随意重排、可换位）。摆好后继续作战。":"布阵：点己方单位再点左侧阵地格可换位（仅左二列）。摆好后开战。"}</div>${legend}
+      <button class="btn btn-primary wf-go" id="wf-start">${free?"继 续 作 战 ▶":"开 战"}</button>`;
   }else if(B.phase==="over"){
     ctrl=`<div class="wf-result ${B.win?"win":"lose"}">${B.win?"凯　旋":"败　北"}${B.reason?`<span class="wf-reason">· ${B.reason}</span>`:""}</div>
       <button class="btn btn-primary wf-go" id="wf-finish">${B.win?"献　捷　班　师":"收　拾　残　部"}</button>`;
@@ -491,6 +504,7 @@ function render(){
       <div class="wf-btns">
         ${selU&&skillReady(selU)?`<button class="chip skill${B.skillMode?" on":""}" id="wf-skill">技能·${(ARM[selU.arm].skill).name} ✦</button>`:""}
         ${selU?`<button class="chip" id="wf-skip">原地待命</button>`:""}
+        <button class="chip" id="wf-redeploy">重新布阵 ⟲</button>
         <button class="chip warn" id="wf-end">结束我方回合 ▶</button></div>`;
   }
   // 攻击特效到点后清场重绘
@@ -519,6 +533,7 @@ function bind(){
   const s=document.getElementById("wf-start"); if(s) s.onclick=startBattle;
   const skb=document.getElementById("wf-skill"); if(skb) skb.onclick=useSkill;
   const sk=document.getElementById("wf-skip"); if(sk) sk.onclick=skipUnit;
+  const rd=document.getElementById("wf-redeploy"); if(rd) rd.onclick=enterRedeploy;
   const en=document.getElementById("wf-end"); if(en) en.onclick=()=>{ aliveOf("our").forEach(u=>u.acted=true); enemyTurn(); };
   const f=document.getElementById("wf-finish"); if(f) f.onclick=()=>{ const mc=document.getElementById("modal-close"); if(mc)mc.style.display=""; UI.closeModal(); const cb=B.onResolve,r=B.result; B=null; if(cb)cb(r); };
 }
