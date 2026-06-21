@@ -666,30 +666,27 @@ function collectAssetUrls(){
 function preloadAssets(done){
   const {crit, rest}=collectAssetUrls(), total=crit.length;
   const fill=$("pl-fill"), txt=$("pl-text"), pl=$("preloader");
-  let loaded=0, ready=false, entered=false, warmed=false;
-  // 后台静默预热其余立绘（不阻塞、不计进度）：等标题曲缓冲一拍再开，避免抢带宽
+  let loaded=0, revealed=false, warmed=false;
+  // 后台静默预热其余立绘（不阻塞、不计进度），稍延后避免与首屏抢带宽
   const warmRest=()=>{ if(warmed) return; warmed=true;
     setTimeout(()=>{ rest.forEach(u=>{ const im=new Image(); im.src=u; }); }, 1800); };
-  // 入境：玩家轻触一下 → 起播标题曲(满足浏览器自动播放限制) → 揭开标题
-  const enter=()=>{ if(entered) return; entered=true;
-    if(typeof MusicSys!=="undefined") MusicSys.start();   // 这一触既起播、又让 title 曲在标题页响起
+  // 关键集就绪 → 自动揭开标题（不再强制轻触·杜绝误触穿透到「即皇帝位」）。
+  // 标题曲不在此 start——交给 music.js 全局首次交互监听(pointerdown/keydown)起播，
+  // 否则此处提前 start() 会把 started 置真，玩家真点击时反而不响。
+  const reveal=()=>{ if(revealed) return; revealed=true;
+    if(txt) txt.textContent="恭 迎 圣 驾";
     if(pl){ pl.classList.add("done"); setTimeout(()=>{ pl.style.display="none"; },520); }
-    done&&done(); warmRest(); };
-  // 关键集就绪 → 提示「轻触入境」，等玩家点（不再自动淡出，确保标题曲能响）
-  const arm=()=>{ if(ready) return; ready=true;
-    if(txt) txt.textContent="轻 触 入 境";
-    if(pl){ pl.classList.add("ready"); pl.addEventListener("pointerdown",enter,{once:true}); }
-    else enter();
+    done&&done(); warmRest();
   };
-  if(!total){ arm(); return; }
+  if(!total){ reveal(); return; }
   const tick=()=>{ loaded++;
     const pct=Math.round(loaded/total*100);
     if(fill) fill.style.width=pct+"%";
-    if(txt && !ready)  txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
-    if(loaded>=total) arm();
+    if(txt && !revealed) txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
+    if(loaded>=total) reveal();
   };
   crit.forEach(u=>{ const im=new Image(); im.onload=im.onerror=tick; im.src=u; });
-  setTimeout(()=>{ arm(); }, 20000); // 兜底：个别图卡住也放行（仍等轻触入境）
+  setTimeout(reveal, 20000); // 兜底：个别图卡住也自动放行进标题
 }
 function boot(){
   try{ if(localStorage.getItem("zjjs_cheat")==="1") Game._cheat=true; }catch(e){}   // 破解版一经解锁，本机长期有效
