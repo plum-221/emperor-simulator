@@ -735,6 +735,35 @@ const api = {
     this.toast(`科举得士，${got} 位新贤入朝。`);
   },
 
+  /* ===== 党争派系图：从关系网聚类出朝堂势力（只读·把密谍司/关系/忠诚显形）===== */
+  computeFactions(){
+    const ms=this.s.ministers||[];
+    const POW={chancellor:30,marshal:28,finance:20,censor:18,defense:18,personnel:14,remonstrant:12,vanguard:12,guard:12};
+    const byCast={}; ms.forEach(m=>{ if(m.castId) byCast[m.castId]=m; });
+    const idx=new Map(); ms.forEach((m,i)=>idx.set(m,i));
+    const parent=ms.map((_,i)=>i);
+    const find=x=>{ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; };
+    const BOND=new Set(["师徒","盟友","同党","亲族"]);
+    ms.forEach((m,i)=>{ (m.rel||[]).forEach(e=>{ if(!BOND.has(e.type))return; const o=byCast[e.to]; if(o&&idx.has(o)) parent[find(i)]=find(idx.get(o)); }); });
+    const groups={}; ms.forEach((m,i)=>{ const r=find(i); (groups[r]=groups[r]||[]).push(m); });
+    const factions=Object.values(groups).filter(g=>g.length>=2).map(mem=>{
+      const martial=mem.filter(m=>m.kind==="martial").length;
+      const avgLoy=mem.reduce((a,m)=>a+m.loyalty,0)/mem.length, avgAmb=mem.reduce((a,m)=>a+m.ambition,0)/mem.length;
+      const hasWaiqi=mem.some(m=>m.waiqi);
+      const hasCabal=mem.some(m=>(m.rel||[]).some(e=>e.type==="同党"&&mem.some(x=>x.castId===e.to)));
+      const power=Math.round(mem.reduce((a,m)=>a+(POW[m.post]||0)+(m.kind==="martial"?m.mil:m.civ)*0.4+(m.waiqi?15:0),0));
+      // 优先级：外戚 > 结党/高野心(权臣) > 武将集团 > 清流 > 朋党（结党的奸党即便武将居多也算权臣朋党，不被中性标签遮掩）
+      const kind = hasWaiqi?"外戚党" : (hasCabal||avgAmb>58)?"权臣朋党" : (martial>mem.length/2?"武将集团" : avgLoy>=60?"清流" : "朋党");
+      return {members:mem.map(m=>({name:m.name,post:m.post,kind:m.kind,loyalty:Math.round(m.loyalty),ambition:Math.round(m.ambition),waiqi:!!m.waiqi})),
+        kind, power, avgLoy:Math.round(avgLoy), avgAmb:Math.round(avgAmb), size:mem.length, peril:(kind==="权臣朋党"||kind==="外戚党")&&avgAmb>58};
+    }).sort((a,b)=>b.power-a.power);
+    const tensions=[]; const seen=new Set();
+    ms.forEach(m=>{ (m.rel||[]).forEach(e=>{ if(e.type!=="政敌"&&e.type!=="世仇")return; const o=byCast[e.to]; if(!o)return;
+      const key=[m.castId,e.to].sort().join("|"); if(seen.has(key))return; seen.add(key); tensions.push({a:m.name,b:o.name,type:e.type}); }); });
+    const dominant=factions[0]||null;
+    return {factions, tensions, dominant};
+  },
+
   /* ===== 联姻外交：公主和亲结盟（后宫/皇嗣 → 天下4X 缝合）===== */
   isAllied(f){ return !!(this.s.allies && this.s.allies[f]>0); },
   // 仍敌对、尚未结盟的番邦

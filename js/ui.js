@@ -279,6 +279,13 @@ function renderPanel(name){
         <div class="rc-info"><b>密谍司</b><span>${spyEst?`司阶 <b>Lv${s.spy.level}</b> · 眼线 ${(s.spy.watch||[]).length}/${1+(s.spy.level||1)}。密察百官私行，每夜戌时密呈。`:'设耳目于朝野，密察 结党/贪墨/通敌/构陷，每夜密报真账。'}</span></div>
         <button class="btn btn-primary rc-btn" onclick="UI.openSpy()">${spyEst?(spyAlert?'密谍司':'密谍司'):'设立密谍司'}</button>
       </div>`;
+      // 朝局势力图（党争可视化）
+      const fac=Game.computeFactions?Game.computeFactions():{factions:[],tensions:[]};
+      const perilFac=fac.factions.find(f=>f.peril);
+      h+=`<div class="recruit-bar fac-bar${perilFac?' alert':''}">
+        <div class="rc-info"><b>朝局势力</b><span>${fac.factions.length?`朝堂分 <b>${fac.factions.length}</b> 派${fac.dominant?`，<b>${fac.dominant.kind}</b>权重最盛`:""}${perilFac?` · <em class="voucher" style="color:#e08a8a">${perilFac.kind}坐大！</em>`:""}。${fac.tensions.length?`党争 ${fac.tensions.length} 处`:"朝局尚和"}` : "百官各自为政，未结朋党。"}</span></div>
+        <button class="btn btn-primary rc-btn" onclick="UI.openFactions()">朝局势力图</button>
+      </div>`;
       if(owned.length) h+=`<div class="armory">`+owned.map(w=>{const tg=GACHA.tiers[w.tier];const on=s.ministers.find(x=>x.weapon===w.id);
         const lv=(s.weaponLv&&s.weaponLv[w.id])||0; const eff=w.bonus+lv*FORGE_STEP;
         const maxed=lv>=FORGE_MAX; const fc=forgeCost(lv); const canForge=!maxed&&(s.shards||0)>=fc;
@@ -502,6 +509,27 @@ function showSelect(c){
 function openModal(html){ $("modal-content").innerHTML=html; $("modal").classList.add("open"); }
 function closeModal(){ $("modal").classList.remove("open"); }
 
+/* ---------- 朝局势力图（党争可视化）---------- */
+function openFactions(){
+  const fac=Game.computeFactions();
+  const FCLS={外戚党:"#c47894",武将集团:"#c08a4a",权臣朋党:"#b85a5a",清流:"#5a9bb0",朋党:"#8a8170"};
+  if(!fac.factions.length){
+    openModal(`<h2>朝局势力图</h2><p class="panel-tip">满朝文武各自为政，尚未结成朋党。<br>※ 派系由「师徒/盟友/同党/亲族」关系自然聚合而成；招揽更多关联人物、或密谍司养出结党，朝局便会分化。</p><button class="btn" onclick="UI.closeModal()">退下</button>`); return;
+  }
+  const cards=fac.factions.map(f=>{
+    const col=FCLS[f.kind]||"#8a8170";
+    const mem=f.members.map(m=>`<span class="fac-mem">${m.name}${m.post?`<i class="fac-post">${(POSITIONS.find(p=>p.id===m.post)||{}).name||""}</i>`:""}${m.waiqi?'<i class="fac-wq">外戚</i>':""}<u>忠${m.loyalty}·野${m.ambition}</u></span>`).join("");
+    return `<div class="fac-card" style="border-color:${col}">
+      <div class="fac-head"><b style="color:${col}">${f.kind}</b><span class="fac-pow">权势 ${f.power}</span>${f.peril?'<span class="fac-peril">⚠ 坐大</span>':""}</div>
+      <div class="fac-meta">${f.size} 人 · 均忠 ${f.avgLoy} · 均野 ${f.avgAmb}</div>
+      <div class="fac-mems">${mem}</div></div>`;
+  }).join("");
+  const tens=fac.tensions.length?`<div class="fac-tens"><b>党争 · 庙堂相争</b>${fac.tensions.map(t=>`<span class="fac-t ${t.type==="世仇"?"feud":"rival"}">${t.a} <em>${t.type==="世仇"?"⚔":"⚡"}</em> ${t.b}</span>`).join("")}</div>`:`<p class="panel-tip">各派暂无公开倾轧，朝局尚算平和。</p>`;
+  const peril=fac.factions.find(f=>f.peril);
+  const verdict=peril?`<p class="panel-tip" style="color:#e08a8a">※ <b>${peril.kind}</b>权重过盛、野心炽烈，已成尾大不掉之势——宜遣密谍司察其结党、或以问罪剪其羽翼，否则恐有不臣之祸。`
+    :`<p class="panel-tip">※ ${fac.dominant?`当前<b>${fac.dominant.kind}</b>权重最盛。`:""}派系由关系网自然聚合；扶植清流、剪除朋党，乃帝王制衡之术。`;
+  openModal(`<h2>朝局势力图 · 党争</h2>${verdict}<div class="fac-grid">${cards}</div>${tens}<button class="btn" onclick="UI.closeModal()">退下</button>`);
+}
 /* ---------- 和亲结盟 选择弹窗 ---------- */
 function openMarriage(pid){
   const G=Game, ps=G.marriageablePrincesses(), fs=G.marriageTargets();
@@ -747,7 +775,7 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
-  openMarriage, openEnfeoff,
+  openMarriage, openEnfeoff, openFactions,
   promptNewborns, confirmNewbornName,
   openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};
