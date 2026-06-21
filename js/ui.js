@@ -588,8 +588,25 @@ function openArchive(mode){
         ${m?`<button class="chip danger" onclick="Game.deleteSlot(${i})">删除</button>`:""}
       </div></div>`;
   }
-  h+=`</div><p class="panel-tip">※ 存档存于本机浏览器（清除浏览器数据会丢失）。「继续上局」是自动存档，与此处 6 格手动存档互不影响。</p>`;
+  h+=`</div>
+    <div class="ar-code"><button class="chip gold" onclick="UI.showExportCode()">导出存档码</button><button class="chip" onclick="UI.showImportCode()">导入存档码</button></div>
+    <p class="panel-tip">※ 存档存于本机浏览器（清除浏览器数据会丢失）。怕丢档或想换设备，用<b>导出存档码</b>把整局存成一串文本带走，到别处<b>导入</b>即续。「继续上局」是自动存档，与此处 6 格手动存档互不影响。</p>`;
   openModal(h);
+}
+function showExportCode(){
+  const code=Game.exportSave();
+  openModal(`<h2>导出存档码</h2><p class="panel-tip">复制下方整串文本妥善保存（换设备/防丢）。到别处「导入存档码」即可续局。</p>
+    <textarea class="code-box" readonly onclick="this.select()">${code}</textarea>
+    <div class="ar-code"><button class="chip gold" id="copy-code">一键复制</button><button class="chip" onclick="UI.openArchive('save')">返回</button></div>`);
+  const cb=$("copy-code"); if(cb) cb.onclick=()=>{ const ta=document.querySelector(".code-box"); if(ta){ ta.select();
+    try{ navigator.clipboard.writeText(ta.value); }catch(e){ document.execCommand&&document.execCommand("copy"); }
+    cb.textContent="已复制 ✓"; } };
+}
+function showImportCode(){
+  openModal(`<h2>导入存档码</h2><p class="panel-tip warn-tip">导入将<b>覆盖当前进度</b>，请确认已存档。粘贴存档码后点导入。</p>
+    <textarea class="code-box" placeholder="在此粘贴存档码……"></textarea>
+    <div class="ar-code"><button class="chip gold" id="do-import">导　入</button><button class="chip" onclick="UI.openArchive('save')">返回</button></div>`);
+  const ib=$("do-import"); if(ib) ib.onclick=()=>{ const ta=document.querySelector(".code-box"); if(ta&&Game.importSave(ta.value)) UI.closeModal(); };
 }
 function openGameMenu(){
   const mOn=(typeof MusicSys!=="undefined")&&MusicSys.isEnabled();
@@ -775,7 +792,7 @@ return {toGame:()=>{ show("game"); if(typeof MusicSys!=="undefined") MusicSys.se
   openPanel, closePanel, renderPanel, toast, announceSuccession, showEnd, showRecruit, showSelect,
   openModal, closeModal, openArchive, openGameMenu, openHelp, backToTitle,
   pickCampaign, toggleCampaignEmperor, doLaunchCampaign, dayTransition, openCharacter, openSpy, openImpeach,
-  openMarriage, openEnfeoff, openFactions,
+  openMarriage, openEnfeoff, openFactions, showExportCode, showImportCode,
   promptNewborns, confirmNewbornName,
   openCheatGate, verifyCheat, openCheatPanel, cheatMax, cheatAdd, cheatHeal, cheatApply,
   toggleMusic, toggleSfx, boot};

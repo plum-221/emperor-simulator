@@ -1198,6 +1198,17 @@ const api = {
 
   /* ---------- 存档 ---------- */
   save(){ try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){} },
+  /* 存档码：导出/导入（跨设备·防丢，把整局状态编成一串可复制文本）*/
+  exportSave(){ try{ return btoa(unescape(encodeURIComponent(JSON.stringify(this.s)))); }catch(e){ return ""; } },
+  importSave(code){
+    try{
+      const d=JSON.parse(decodeURIComponent(escape(atob((code||"").trim()))));
+      if(!d||!d.nation||!d.emperor){ this.toast("存档码无效或已损坏。"); return false; }
+      this._adopt(d);
+      try{ localStorage.setItem(LS_SAVE, JSON.stringify(this.s)); }catch(e){}
+      SFX.good&&SFX.good(); this.toast("存档码导入成功，已载入该局。"); return true;
+    }catch(e){ this.toast("存档码解析失败，请检查是否完整复制。"); return false; }
+  },
   /* 旧档字段补全（惰性 migration），新存档结构变化时在此兜底 */
   _migrate(d){ if(!d.romance)d.romance={}; if(!d.weapons)d.weapons=[]; if(!d.weaponLv)d.weaponLv={}; if(!d.talents)d.talents=[]; if(d.talentPts==null)d.talentPts=0; return d; },
   /* 把一份状态对象装载为当前游戏并进入游戏界面 */
