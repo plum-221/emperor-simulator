@@ -140,14 +140,14 @@ const UPGRADE_COST = 5;   // 每次以碎片提升一名官员主属性所耗碎
 
 /* ---------- 武器系统：独立卡牌池，装备于角色提对应能力 ---------- */
 const WEAPONS = [
-  {id:"tieqiang", name:"铁枪",     tier:"low",  stat:"mil", bonus:5,  img:"assets/weapons/tieqiang.png",  desc:"寻常铁枪，聊胜于无"},
-  {id:"langhao",  name:"狼毫笔",   tier:"low",  stat:"civ", bonus:5,  img:"assets/weapons/langhao.png",   desc:"文房利器，落笔成章"},
-  {id:"qilingong",name:"麒麟弓",   tier:"mid",  stat:"mil", bonus:12, img:"assets/weapons/qilingong.png", desc:"良弓在手，百步穿杨"},
-  {id:"liutao",   name:"六韬兵书", tier:"mid",  stat:"civ", bonus:12, img:"assets/weapons/liutao.png",    desc:"运筹帷幄，决胜千里"},
-  {id:"yuruyi",   name:"玉如意",   tier:"mid",  stat:"civ", bonus:10, img:"assets/weapons/yuruyi.png",    desc:"祥瑞之器，言出法随"},
-  {id:"fangtian", name:"方天画戟", tier:"high", stat:"mil", bonus:22, img:"assets/weapons/fangtian.png",  desc:"万人敌之兵，所向披靡"},
-  {id:"qinggang", name:"青釭剑",   tier:"high", stat:"mil", bonus:20, img:"assets/weapons/qinggang.png",  desc:"削铁如泥，吹毛断发"},
-  {id:"yuxi",     name:"传国玉玺", tier:"high", stat:"civ", bonus:22, img:"assets/weapons/yuxi.png",      desc:"受命于天，既寿永昌"}
+  {id:"tieqiang", name:"铁枪",     tier:"low",  stat:"mil", bonus:5,  img:"assets/weapons/tieqiang.jpg",  desc:"寻常铁枪，聊胜于无"},
+  {id:"langhao",  name:"狼毫笔",   tier:"low",  stat:"civ", bonus:5,  img:"assets/weapons/langhao.jpg",   desc:"文房利器，落笔成章"},
+  {id:"qilingong",name:"麒麟弓",   tier:"mid",  stat:"mil", bonus:12, img:"assets/weapons/qilingong.jpg", desc:"良弓在手，百步穿杨"},
+  {id:"liutao",   name:"六韬兵书", tier:"mid",  stat:"civ", bonus:12, img:"assets/weapons/liutao.jpg",    desc:"运筹帷幄，决胜千里"},
+  {id:"yuruyi",   name:"玉如意",   tier:"mid",  stat:"civ", bonus:10, img:"assets/weapons/yuruyi.jpg",    desc:"祥瑞之器，言出法随"},
+  {id:"fangtian", name:"方天画戟", tier:"high", stat:"mil", bonus:22, img:"assets/weapons/fangtian.jpg",  desc:"万人敌之兵，所向披靡"},
+  {id:"qinggang", name:"青釭剑",   tier:"high", stat:"mil", bonus:20, img:"assets/weapons/qinggang.jpg",  desc:"削铁如泥，吹毛断发"},
+  {id:"yuxi",     name:"传国玉玺", tier:"high", stat:"civ", bonus:22, img:"assets/weapons/yuxi.jpg",      desc:"受命于天，既寿永昌"}
 ];
 function weaponById(id){ return WEAPONS.find(w=>w.id===id); }
 function rollWeapon(){ const t=rollTier(0); const pool=WEAPONS.filter(w=>w.tier===t); return R.pick(pool.length?pool:WEAPONS); }
@@ -201,7 +201,7 @@ const EMPEROR_BANDS = [
   {key:"old",   max:999}
 ];
 function emperorBand(age){ return (EMPEROR_BANDS.find(b=>age<=b.max) || EMPEROR_BANDS[EMPEROR_BANDS.length-1]).key; }
-function emperorFace(age){ return "assets/portraits/emperor/"+emperorBand(age)+".png"; }
+function emperorFace(age){ return "assets/portraits/emperor/"+emperorBand(age)+".jpg"; }
 
 /* 子嗣取名用字 */
 const GIVEN_M = "承乾景琰昭珩瑞渊弘睿晟煜钰熙泽宸曜钧澈".split("");

@@ -397,7 +397,7 @@ function renderPanel(name){
         <button class="chip" onclick="Game.educateChild('${c.id}','charm')">修仪</button>
         <button class="chip" onclick="Game.educateChild('${c.id}','politics')">问政</button>`:"";
       return `<div class="m-card child">
-        ${img("assets/portraits/children/"+st.key+".png","child-face")}
+        ${img("assets/portraits/children/"+st.key+".jpg","child-face")}
         <div class="m-info">
           <div class="m-head"><b>${c.name}</b><span class="m-post">皇${c.gender==="男"?"子":"女"} · ${c.age}岁 · ${st.name}</span>${heir}${marriedTag}${fiefTag}</div>
           <div class="m-line">母 ${c.mother}</div>
@@ -806,15 +806,15 @@ function confirmNewbornName(keep){
 function collectAssetUrls(){
   const M=Game.manifest||{}, crit=new Set(), rest=new Set();
   const addC=u=>{ if(u) crit.add(u); }, addR=u=>{ if(u) rest.add(u); };
-  if(typeof EMPEROR_BANDS!=="undefined") EMPEROR_BANDS.forEach(b=>addC("assets/portraits/emperor/"+b.key+".png"));
-  if(typeof CHILD_STAGES!=="undefined")  CHILD_STAGES.forEach(st=>addC("assets/portraits/children/"+st.key+".png"));
+  if(typeof EMPEROR_BANDS!=="undefined") EMPEROR_BANDS.forEach(b=>addC("assets/portraits/emperor/"+b.key+".jpg"));
+  if(typeof CHILD_STAGES!=="undefined")  CHILD_STAGES.forEach(st=>addC("assets/portraits/children/"+st.key+".jpg"));
   if(typeof CONSORTS!=="undefined")      CONSORTS.forEach(c=>addC(c.portrait));   // 后宫面板开局即列可攻略妃
   if(typeof WEAPONS!=="undefined")       WEAPONS.forEach(w=>addC(w.img));
   (M.generals ||[]).forEach(x=>addC(x.file));                                     // 名将仅 4 张，开局军务/事件常现
   (M.ministers||[]).slice(0,12).forEach(x=>addC(x.file));                         // 开局班底+早期招贤大致命中
   (M.ministers||[]).slice(12).forEach(x=>addR(x.file));
   (M.consorts ||[]).forEach(x=>addR(x.file));
-  ["guard","archer","medic","foe_chief","foe_soldier","foe_archer","foe_shaman"].forEach(k=>addR("assets/portraits/units/"+k+".png")); // 沙盘单位头像
+  ["guard","archer","medic","foe_chief","foe_soldier","foe_archer","foe_shaman"].forEach(k=>addR("assets/portraits/units/"+k+".jpg")); // 沙盘单位头像
   const c=[...crit];
   return { crit:c, rest:[...rest].filter(u=>!crit.has(u)) };
 }

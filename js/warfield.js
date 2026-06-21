@@ -54,10 +54,10 @@ function buildGrid(){
 
 /* ---------- 生成部队 ---------- */
 function mkUnit(o){ return Object.assign({hp:o.maxhp,acted:false,x:-1,y:-1},o); }
-const UNIT_FACE={ guard:"assets/portraits/units/guard.png", archer:"assets/portraits/units/archer.png",
-  medic:"assets/portraits/units/medic.png",
-  foe_chief:"assets/portraits/units/foe_chief.png", foe_soldier:"assets/portraits/units/foe_soldier.png",
-  foe_archer:"assets/portraits/units/foe_archer.png", foe_shaman:"assets/portraits/units/foe_shaman.png" };
+const UNIT_FACE={ guard:"assets/portraits/units/guard.jpg", archer:"assets/portraits/units/archer.jpg",
+  medic:"assets/portraits/units/medic.jpg",
+  foe_chief:"assets/portraits/units/foe_chief.jpg", foe_soldier:"assets/portraits/units/foe_soldier.jpg",
+  foe_archer:"assets/portraits/units/foe_archer.jpg", foe_shaman:"assets/portraits/units/foe_shaman.jpg" };
 function armed(o){ const a=ARM[o.arm]||ARM.bu; return mkUnit(Object.assign({rng:a.rng,move:a.move,nrg:0,nrgMax:a.skill.cost},o)); }
 function buildUnits(cfg){
   const us=[]; let n=0;
