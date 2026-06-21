@@ -645,28 +645,37 @@ function confirmNewbornName(keep){
   if(s._newborns.length){ setTimeout(promptNewborns,120); }   // 还有未命名者，继续下一位
 }
 
-/* ---------- 开场预加载：把所有立绘一次性载入浏览器缓存，进局后立绘即开即显 ---------- */
+/* ---------- 开场预加载：只阻塞「开局必现」的关键立绘，其余进场后后台静默预热 ----------
+   旧版把全部 ~156 张立绘(≈23MB)堵在开场，进场奇慢。现拆两档：
+   crit = 开局即可能展示(帝王四龄/皇嗣成长/固定妃子/武器/名将) ≈30 张 → 阻塞预热(进场快)
+   rest = 招贤/选秀才出现的百官与妃子池(百余张) → 进场后后台 new Image() 静默预热(不挡路) */
 function collectAssetUrls(){
-  const M=Game.manifest||{}, set=new Set(), add=u=>{ if(u) set.add(u); };
-  (M.ministers||[]).forEach(x=>add(x.file));
-  (M.generals ||[]).forEach(x=>add(x.file));
-  (M.consorts ||[]).forEach(x=>add(x.file));
-  if(typeof CONSORTS!=="undefined")     CONSORTS.forEach(c=>add(c.portrait));
-  if(typeof EMPEROR_BANDS!=="undefined") EMPEROR_BANDS.forEach(b=>add("assets/portraits/emperor/"+b.key+".png"));
-  if(typeof CHILD_STAGES!=="undefined")  CHILD_STAGES.forEach(st=>add("assets/portraits/children/"+st.key+".png"));
-  if(typeof WEAPONS!=="undefined")       WEAPONS.forEach(w=>add(w.img));
-  return [...set];
+  const M=Game.manifest||{}, crit=new Set(), rest=new Set();
+  const addC=u=>{ if(u) crit.add(u); }, addR=u=>{ if(u) rest.add(u); };
+  if(typeof EMPEROR_BANDS!=="undefined") EMPEROR_BANDS.forEach(b=>addC("assets/portraits/emperor/"+b.key+".png"));
+  if(typeof CHILD_STAGES!=="undefined")  CHILD_STAGES.forEach(st=>addC("assets/portraits/children/"+st.key+".png"));
+  if(typeof CONSORTS!=="undefined")      CONSORTS.forEach(c=>addC(c.portrait));   // 后宫面板开局即列可攻略妃
+  if(typeof WEAPONS!=="undefined")       WEAPONS.forEach(w=>addC(w.img));
+  (M.generals ||[]).forEach(x=>addC(x.file));                                     // 名将仅 4 张，开局军务/事件常现
+  (M.ministers||[]).slice(0,12).forEach(x=>addC(x.file));                         // 开局班底+早期招贤大致命中
+  (M.ministers||[]).slice(12).forEach(x=>addR(x.file));
+  (M.consorts ||[]).forEach(x=>addR(x.file));
+  const c=[...crit];
+  return { crit:c, rest:[...rest].filter(u=>!crit.has(u)) };
 }
 function preloadAssets(done){
-  const urls=collectAssetUrls(), total=urls.length;
+  const {crit, rest}=collectAssetUrls(), total=crit.length;
   const fill=$("pl-fill"), txt=$("pl-text"), pl=$("preloader");
-  let loaded=0, ready=false, entered=false;
+  let loaded=0, ready=false, entered=false, warmed=false;
+  // 后台静默预热其余立绘（不阻塞、不计进度）：等标题曲缓冲一拍再开，避免抢带宽
+  const warmRest=()=>{ if(warmed) return; warmed=true;
+    setTimeout(()=>{ rest.forEach(u=>{ const im=new Image(); im.src=u; }); }, 1800); };
   // 入境：玩家轻触一下 → 起播标题曲(满足浏览器自动播放限制) → 揭开标题
   const enter=()=>{ if(entered) return; entered=true;
     if(typeof MusicSys!=="undefined") MusicSys.start();   // 这一触既起播、又让 title 曲在标题页响起
     if(pl){ pl.classList.add("done"); setTimeout(()=>{ pl.style.display="none"; },520); }
-    done&&done(); };
-  // 资源就绪 → 提示「轻触入境」，等玩家点（不再自动淡出，确保标题曲能响）
+    done&&done(); warmRest(); };
+  // 关键集就绪 → 提示「轻触入境」，等玩家点（不再自动淡出，确保标题曲能响）
   const arm=()=>{ if(ready) return; ready=true;
     if(txt) txt.textContent="轻 触 入 境";
     if(pl){ pl.classList.add("ready"); pl.addEventListener("pointerdown",enter,{once:true}); }
@@ -679,7 +688,7 @@ function preloadAssets(done){
     if(txt && !ready)  txt.textContent=`恭迎圣驾 · 备办仪仗　${loaded}/${total}`;
     if(loaded>=total) arm();
   };
-  urls.forEach(u=>{ const im=new Image(); im.onload=im.onerror=tick; im.src=u; });
+  crit.forEach(u=>{ const im=new Image(); im.onload=im.onerror=tick; im.src=u; });
   setTimeout(()=>{ arm(); }, 20000); // 兜底：个别图卡住也放行（仍等轻触入境）
 }
 function boot(){
