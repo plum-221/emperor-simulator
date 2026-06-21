@@ -15,7 +15,14 @@ const ENDINGS = {
   no_heir:{seal:"绝",temple:"谥曰·殇帝",title:"绝嗣而终",desc:"你驾崩之时膝下无子，皇位无人可继。诸王争立，外戚干政，盛极一时的王朝就此分崩离析。"},
   poison:{seal:"丹",temple:"谥曰·惑帝",title:"丹毒攻心",desc:"你痴迷长生、日服金丹，重金属之毒终于发作。你在幻觉中“飞升”，留下无尽遗恨。"},
   sage:{seal:"圣",temple:"庙号·圣祖",title:"千古一帝",desc:"你在位数十载，文治武功，四海升平、万邦来朝。史官提笔，尊你为圣祖，庙食千秋，万世传颂。",good:true},
-  unifier:{seal:"統",temple:"庙号·太祖 · 谥曰武皇帝",title:"混一寰宇 · 一统天下",desc:"你亲提六师，扫平列国群雄，削尽割据。普天之下莫非王土，率土之滨莫非王臣。封禅泰山，受万邦朝贺；车同轨、书同文，开万世一系之基业。你的武功，足以照耀千古。",good:true,cg:"end_unify"}
+  unifier:{seal:"統",temple:"庙号·太祖 · 谥曰武皇帝",title:"混一寰宇 · 一统天下",desc:"你亲提六师，扫平列国群雄，削尽割据。普天之下莫非王土，率土之滨莫非王臣。封禅泰山，受万邦朝贺；车同轨、书同文，开万世一系之基业。你的武功，足以照耀千古。",good:true,cg:"end_unify"},
+  // ===== 帝王人设·多结局（自然驾崩时按「行止账」盖棺定论）=====
+  conqueror:{seal:"武",temple:"庙号·世祖 · 谥曰武皇帝",title:"开疆拓土 · 一代武皇",desc:"你戎马一生，开疆万里，列国闻风丧胆。虽未竟一统之业，然铁骑所至、皆为王土。史官载你武功赫赫，称一代雄主，庙号世祖。",good:true,cg:"end_conquer"},
+  benevolent:{seal:"仁",temple:"庙号·仁宗 · 谥曰文德皇帝",title:"仁泽万民 · 文景之治",desc:"你轻徭薄赋、与民休息，仓廪丰实、路不拾遗。百姓歌于途、商旅安于市。你驾崩之日，万民缟素、哭声震野。史称仁宗，与文景同光。",good:true,cg:"end_benevolent"},
+  cultured:{seal:"文",temple:"庙号·文宗 · 谥曰文皇帝",title:"文教兴邦 · 右文之治",desc:"你兴学校、广科举、集典籍，斯文在兹、贤才辈出。一朝文物之盛，照映千古。史官尊你为文宗，称右文之主、斯文宗匠。",good:true,cg:"end_culture"},
+  schemer:{seal:"谋",temple:"庙号·睿宗 · 谥曰明皇帝",title:"权衡乾坤 · 御臣之术",desc:"你深居九重、洞烛奸邪，密谍布于四野、权柄握于一手。群臣股栗、莫敢欺君。虽刻薄寡恩，然朝纲独断、社稷安稳。史称睿宗，谓有驭下之明。",good:true,cg:"end_schemer"},
+  tyrant:{seal:"暴",temple:"谥曰·厉帝",title:"严刑峻法 · 暴虐之君",desc:"你猜忌嗜杀、刑赏由心，忠良饮恨、朝野侧目。虽以铁腕震慑四方、得保社稷于一时，然身死之后，史笔如刀，谥你为厉——千载之下，犹闻其酷。",cg:"end_tyrant"},
+  hedonist:{seal:"荒",temple:"谥曰·炀帝",title:"沉湎酒色 · 荒唐天子",desc:"你广筑离宫、沉迷声色，丹炉昼夜不熄、椒房环佩不绝，朝政废弛、贤者杜口。幸得祖宗余荫，江山未倾于你手；然史官提笔，谥你为炀——荒唐二字，掩尽生平。",cg:"end_hedonist"}
 };
 
 let G;  // 指向自身，供事件 do() 使用
@@ -73,6 +80,7 @@ const api = {
       weapons:[],   // 已得武器 id 列表（武库）
       weaponLv:{},  // 武器强化等级 {[wid]:lv}
       allies:{},      // 和亲盟邦 {faction:剩余年数}，盟期内该番邦不犯边
+      deeds:{tyranny:0,valor:0,benevolence:0,cunning:0,culture:0,indulgence:0},  // 帝王行止账：盖棺定人设·决多结局
       flags:{}, log:[], pendingEvent:null, actedThisTurn:false,
       over:false, rebel:null, _succession:null, peakAge:0
     };
@@ -292,6 +300,7 @@ const api = {
     else { this.shiftAllLoyalty(-7); s.nation.prestige=R.clamp(s.nation.prestige-6); }       // 妄诛忠良：百官寒心
     const aff=this.relRipple(m,"punish");
     this.checkRomanceBreak(post);
+    if(s.deeds){ s.deeds.tyranny+=justified?1:3; s.deeds.cunning+=justified?1:0; }   // 杀伐：暴政/权术之迹
     SFX.bad();
     this.toast(justified ? `${m.name} 罪${charge}，明正典刑，朝纲肃然。` : `${m.name} 无辜伏诛，百官震恐离心！`);
     this.logMsg(justified?`处死 ${m.name}（${charge}），正法度。`:`妄杀 ${m.name}，朝野侧目。`);
@@ -399,6 +408,7 @@ const api = {
     if(m.portrait&&!s.blacklist.includes(m.portrait)) s.blacklist.push(m.portrait);
     if(m.castId&&!(s.exiled||[]).includes(m.castId)) (s.exiled=s.exiled||[]).push(m.castId);
     this.shiftAllLoyalty(-2); const aff=this.relRipple(m,"punish"); this.checkRomanceBreak(post);
+    if(s.deeds) s.deeds.cunning+=2;   // 密谍司拿问：权术之迹
     SFX.bad(); this.toast(`先发制人，${m.name} 已下狱拿问，逆谋消弭。`); this._rippleToast(m,"punish",aff);
     this.logMsg(`密谍司拿问 ${m.name}，其党羽星散。`);
     UI.closeModal(); UI.renderPanel("court"); this.renderTurn();
@@ -888,6 +898,7 @@ const api = {
       n.people=R.clamp(n.people+4);
       s.flags.warWon=true;   // 战功——解锁巾帼·燕霜攻略
       this.tally("battlewin");
+      if(s.deeds) s.deeds.valor++;   // 武功：盖棺定人设
       title=decisive?"大捷！":"惨胜"; text=`${type==="invade"?"击退":(type==="emperor"?"御驾亲征，大破":"挥师征讨")}${enemy}，${decisive?"斩获无数":"险胜收兵"}！疆域 +${land}，国库 +${spoil}，威望大涨。`;
       if(marshal){ marshal.loyalty=R.clamp(marshal.loyalty+4); this.gainExp(marshal,10); }
       SFX.gong();
@@ -1068,12 +1079,32 @@ const api = {
   },
 
   /* ---------- 帝王驾崩 / 传承 ---------- */
+  // 盖棺定论：自然驾崩时据「行止账」+终局国情，判这位帝王的人设结局（够鲜明才盖棺，平庸则照常传承）
+  judgeReign(){
+    const s=this.s, n=s.nation, e=s.emperor, d=s.deeds||{};
+    const conquered = s.map ? Math.max(0, MapSys.counts().own-3) : 0;            // 比开局多占的州
+    const academies = s.map ? s.map.regions.filter(r=>r.owner==="self"&&r.build&&r.build.academy).length : 0;
+    const persona = {
+      conqueror:  (d.valor||0)*5 + conquered*6,
+      benevolent: (n.people>=72?22:n.people>=60?10:0) + (this.hasTalent("t_benevol")?14:0) + (this.hasTalent("t_virtue")?10:0) + (this.hasTalent("t_taxation")?6:0),
+      cultured:   (e.int>=78?16:e.int>=66?8:0) + academies*7 + (this.hasTalent("t_meritocracy")?10:0) + (this.hasTalent("t_scholar")?12:0),
+      schemer:    (d.cunning||0)*6,
+      tyrant:     (d.tyranny||0)*7 + (n.people<42?12:0),
+      hedonist:   s.consorts.length*4 + (s.flags.pills||0)*5 + s.children.length*1.2 + (this.hasTalent("t_charm")?8:0) + (this.hasTalent("t_fertility")?6:0),
+    };
+    let best=null, bv=-1; for(const k in persona){ if(persona[k]>bv){ bv=persona[k]; best=k; } }
+    const sage = e.age>=55 && this.avgNation()>=62 && n.prestige>=70;            // 均衡盛世=圣君
+    // 鲜明人设(分值过阈)优先；否则盛世给圣君；再否则返回 null=照常传承
+    if(bv>=26) return best;
+    if(sage) return "sage";
+    return null;
+  },
   emperorDies(cause){
     const s=this.s, e=s.emperor;
-    // 千古一帝（自然死且功业卓著）
-    if((cause==="age") && e.age>=55 && this.avgNation()>=62 && s.nation.prestige>=70){
-      s._sageWin=true; if(typeof QuestSys!=="undefined"&&s.quest) QuestSys.check(s);
-      this.gameOver("sage"); return;
+    // 自然驾崩 → 盖棺定论：人设鲜明或功业卓著者，此生就此谢幕（玩家一局收束）；平庸则传位续局
+    if(cause==="age"){
+      const verdict=this.judgeReign();
+      if(verdict){ if(verdict==="sage"){ s._sageWin=true; if(typeof QuestSys!=="undefined"&&s.quest) QuestSys.check(s); } this.gameOver(verdict); return; }
     }
     // 寻找继承人：太子优先，否则最年长皇子
     let heir=s.children.find(c=>c.isHeir && c.gender==="男");

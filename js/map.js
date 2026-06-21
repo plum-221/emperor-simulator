@@ -243,6 +243,7 @@ function capture(r,u){
   const pmul=hasTech("unify")?2:1;
   s.nation.land=R.clamp(s.nation.land+R.i(2,5)); s.nation.prestige=R.clamp(s.nation.prestige+R.i(2,4)*pmul);
   if(s.flags) s.flags.warWon=true; if(Game.tally) Game.tally("battlewin");
+  if(s.deeds) s.deeds.valor+=2;   // 开疆拓土：武功之迹
   // 胜利判定
   if(counts().own>=counts().total){ s.nation.prestige=R.clamp(s.nation.prestige+20);
     Game.logMsg("【天下一统】普天之下，莫非王土！"); if(s.flags)s.flags.unified=true;
