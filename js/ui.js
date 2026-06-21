@@ -173,7 +173,7 @@ function showEvent(card){
   const choices=card.choices.filter(c=>!c.cond||c.cond(s));
   const banner=card.triumph?`<div class="ev-banner gold">天 下 一 统 · 万 邦 来 朝</div>`
     :card.big?`<div class="ev-banner">大 事 件 · 国 之 存 亡</div>`:"";
-  const illust=`<img class="ev-illust" src="assets/scenes/${sceneFor(card)}.jpg" alt="" onerror="this.remove()">`;
+  const illust=`<div class="ev-illust-wrap"><img class="ev-illust" src="assets/scenes/${sceneFor(card)}.jpg" alt="" onerror="this.closest('.ev-illust-wrap').remove()"></div>`;
   $("event-area").innerHTML=`
     <div class="ev-card${card.big?" big":""}${card.triumph?" triumph":""}">
       ${banner}
@@ -202,8 +202,12 @@ function showMonth(){
   let questLine="";
   if(typeof QuestSys!=="undefined"&&s.quest){ const q=QuestSys.curMain(s);
     questLine=q?`<p class="month-quest">当前大业：<b>${q.name}</b> —— ${q.desc}</p>`:`<p class="month-quest">中兴大业已成，名垂青史。</p>`; }
+  const MONTH_SCENE={morn:"court", noon:"market", eve:"harem"};
+  const mscene=MONTH_SCENE[ph.key]||"court";
   $("event-area").innerHTML=`
     <div class="month-card">
+      <div class="month-illust-wrap"><img class="month-illust" src="assets/scenes/${mscene}.jpg" alt="" onerror="this.closest('.month-illust-wrap').remove()">
+        <span class="month-illust-cap">${ph.icon} ${ph.name}</span></div>
       <h3>${ph.icon} ${n.year}年${["","正","二","三","四","五","六","七","八","九","十","冬","腊"][n.month]}月${n.day||1}日 · ${ph.name}</h3>
       <p class="month-sub">${ph.hint}。陛下可择一事而行，或召见群臣、临幸后宫，再「下一时段」。</p>
       ${questLine}
